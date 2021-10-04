@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.4;
 
-import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../node_modules/@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract LiniftyToken is IERC20 {
     
     //Variables
-    string public constant name = "Linifty Token";
-    string public constant symbol = "LINI";
+    string public constant NAME = "Linifty Token";
+    string public constant SYMBOL = "LINI";
     string public standard = "Linifty Token v1.0";
-    uint8 public constant decimals = 18;
+    uint8 public constant DECIMALS = 18;
     uint256 private totalSupply_;
 
     using SafeMath for uint256;
@@ -35,7 +35,7 @@ contract LiniftyToken is IERC20 {
 
     //transfer
     function transfer(address to, uint256 numTokens) public override returns (bool sucess) {
-        require(balances[msg.sender] >= numTokens);
+        require(balances[msg.sender] >= numTokens, "Not enough balance");
 
         balances[msg.sender] = balances[msg.sender].sub(numTokens);
         balances[to] = balances[to].add(numTokens);
@@ -56,8 +56,8 @@ contract LiniftyToken is IERC20 {
     }
 
     function transferFrom(address from, address to, uint256 numTokens) public override returns (bool sucesss) {
-        require(numTokens <= balances[from]);
-        require(numTokens <= allowed[from][msg.sender]);
+        require(numTokens <= balances[from], "Not enough balance.");
+        require(numTokens <= allowed[from][msg.sender], "Test error");
 
         balances[from] = balances[from].sub(numTokens);
         allowed[from][msg.sender] = allowed[from][msg.sender].sub(numTokens);

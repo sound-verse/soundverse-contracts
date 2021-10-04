@@ -1,33 +1,17 @@
-var LiniftyToken = artifacts.require("LiniftyToken");
+const { expect } = require("chai");
 
-contract('LiniftyToken', function (accounts) {
-    var tokenInstance;
+describe('LiniftyToken', function (accounts) {
 
-    it('initializes the contract with the correct values', function () {
-        return LiniftyToken.deployed().then(function (instance) {
-            tokenInstance = instance;
-            return tokenInstance.name();
-        }).then(function (name) {
-            assert.equal(name, 'Linifty Token', 'has the correct name');
-            return tokenInstance.symbol();
-        }).then(function (symbol) {
-            assert.equal(symbol, 'LINI', 'has the correct token symbol');
-            return tokenInstance.standard();
-        }).then(function (standard) {
-            assert.equal(standard, 'Linifty Token v1.0', 'has te correct standard');
-        });
-    })
+    it('initializes the contract with the correct values', async function () {
+        const [owner] = await ethers.getSigners()
 
-    it('allocates the total supply upon deployment', function () {
-        return LiniftyToken.deployed().then(function (instance) {
-            tokenInstance = instance;
-            return tokenInstance.totalSupply();
-        }).then(function (totalSupply) {
-            assert.equal(totalSupply.toNumber(), 6000000000, 'sets the total supply to 6,000,000,000')
-            return tokenInstance.balanceOf(accounts[0]);
-        }).then(function (adminBalance) {
-            assert.equal(adminBalance.toNumber(), 6000000000, 'allocates the initial suppply to the admin');
-        });
+        const LiniftyToken = await ethers.getContractFactory("LiniftyToken")
+        const tokenInstance = await LiniftyToken.deploy(6000000000)
+        await tokenInstance.deployed()
+
+        const ownerBalance = await tokenInstance.balanceOf(owner.address)
+        expect(await tokenInstance.totalSupply()).to.equal(ownerBalance)
+
     });
 
     it('transfers token ownership', function () {
@@ -54,7 +38,6 @@ contract('LiniftyToken', function (accounts) {
             assert.equal(balance.toNumber(), 5000000000, 'deducts amount from the sending account')
         });
     });
-
 
     it('approves tokens for delegated transfers', function () {
         return LiniftyToken.deployed().then(function (instance) {
