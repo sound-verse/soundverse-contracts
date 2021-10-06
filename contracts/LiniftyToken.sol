@@ -19,10 +19,13 @@ contract LiniftyToken is IERC20 {
     mapping(address => uint256) public balances;
     mapping(address => mapping(address => uint256)) public allowed;
 
+    address public contractOwner;
+
     //Constructor
     constructor(uint256 total) {
         totalSupply_ = total;
         balances[msg.sender] = totalSupply_;
+        contractOwner = msg.sender;
     }
 
     function totalSupply() public override view returns (uint256) {

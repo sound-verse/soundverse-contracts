@@ -1,20 +1,47 @@
 const { expect } = require("chai");
 
-describe('LiniftyToken', function (accounts) {
+describe('Token contract', function () {
+
+    let LiniftyToken;
+    let liniftyToken;
+    let owner;
+    let addr1;
+    let addr2;
+    let addrs;
+
+    beforeEach(async function () {
+        LiniftyToken = await ethers.getContractFactory("LiniftyToken");
+        [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+    
+        liniftyToken = await LiniftyToken.deploy(6000000000);
+    });
+
+    it('should set the right owner', async function() {
+        expect(await liniftyToken.contractOwner()).to.equal(owner.address);
+    });
+
+    it("Should assign the total supply of tokens to the owner", async function () {
+        const ownerBalance = await liniftyToken.balanceOf(owner.address);
+        expect(await liniftyToken.totalSupply()).to.equal(ownerBalance);
+    });
 
     it('initializes the contract with the correct values', async function () {
-        const [owner] = await ethers.getSigners()
-
-        const LiniftyToken = await ethers.getContractFactory("LiniftyToken")
-        const tokenInstance = await LiniftyToken.deploy(6000000000)
-        await tokenInstance.deployed()
-
-        const ownerBalance = await tokenInstance.balanceOf(owner.address)
-        expect(await tokenInstance.totalSupply()).to.equal(ownerBalance)
+        const ownerBalance = await liniftyToken.balanceOf(owner.address)
+        expect(await liniftyToken.totalSupply()).to.equal(ownerBalance)
 
     });
 
-    it('transfers token ownership', function () {
+    it('transfers token ownership', async function () {
+        await expect(liniftyToken.connect(addr1).transfer(addr1.address, 9999999999999))
+        .to.be.revertedWith("Not enough balance");
+        
+        await liniftyToken.connect(owner).transfer(addr1.address, 1000000000);
+        const addr1Balance = await liniftyToken.balanceOf(addr1.address);
+        expect(addr1Balance).to.equal(1000000000);
+
+    });
+
+    it('transfers token ownership - legacy', function () {
         return LiniftyToken.deployed().then(function (instance) {
             tokenInstance = instance;
             return tokenInstance.transfer.call(accounts[1], 9999999999999);
@@ -39,7 +66,7 @@ describe('LiniftyToken', function (accounts) {
         });
     });
 
-    it('approves tokens for delegated transfers', function () {
+    it('approves tokens for delegated transfers - legacay', function () {
         return LiniftyToken.deployed().then(function (instance) {
             tokenInstance = instance;
             return tokenInstance.approve.call(accounts[1], 100);
@@ -59,7 +86,7 @@ describe('LiniftyToken', function (accounts) {
     });
 
 
-    it('handles delegated token transfers', function () {
+    it('handles delegated token transfers - legacy', function () {
         return LiniftyToken.deployed().then(function (instance) {
             tokenInstance = instance;
             fromAccount = accounts[2];
