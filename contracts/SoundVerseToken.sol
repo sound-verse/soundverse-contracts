@@ -4,12 +4,12 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract LiniftyToken is IERC20 {
+contract SoundVerseToken is IERC20 {
     
     //Variables
-    string public constant NAME = "Linifty Token";
-    string public constant SYMBOL = "LINI";
-    string public standard = "Linifty Token v1.0";
+    string public constant NAME = "SoundVerse Token";
+    string public constant SYMBOL = "SVJ";
+    string public standard = "SoundVerse Token v1.0";
     uint8 public constant DECIMALS = 18;
     uint256 private totalSupply_;
 

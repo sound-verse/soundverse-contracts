@@ -8,10 +8,10 @@ const fs = require('fs');
 
 async function main() {
 
-  const LiniftyToken = await hre.ethers.getContractFactory("LiniftyToken");
-  const token = await LiniftyToken.deploy(LiniftyToken, 6000000000);
+  const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
+  const token = await SoundVerseToken.deploy(SoundVerseToken, 6000000000);
   await token.deployed();
-  console.log("LiniftyToken deployed to:", token.address);
+  console.log("SoundVerseToken deployed to:", token.address);
 
   // let config = `
   // export const nftmarketaddress = "${nftMarket.address}"
