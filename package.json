@@ -16,13 +16,13 @@
     "eslint-plugin-promise": "^5.1.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.4.7",
-    "hardhat": "^2.6.4",
+    "hardhat": "^2.6.5",
     "hardhat-gas-reporter": "^1.0.4",
     "mocha": "^9.1.2",
     "prettier": "^2.4.1",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
-    "solhint": "^3.3.6",
-    "solidity-coverage": "^0.6.7"
+    "solhint": "^1.0.10",
+    "solidity-coverage": "^0.7.17"
   },
   "dependencies": {
     "axios": "^0.22.0",
