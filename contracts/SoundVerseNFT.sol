@@ -5,17 +5,18 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "node_modules/@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract SoundVerseNFT is ERC721URIStorage, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
 
+    Counters.Counter private _tokenIdTracker;
+
     //Constants and variables
+    uint256 public constant MAX_ELEMENTS = 1000;
     uint256 public constant PRICE = 0.1 ether;
     uint256 public constant START_AT = 1;
-
-    Counters.Counter private _tokenIds;
 
     uint256 internal fee;
 
@@ -23,25 +24,34 @@ contract SoundVerseNFT is ERC721URIStorage, Ownable {
     event NewMintEvent(uint256 indexed id);
 
     constructor() ERC721("SoundVerse", "SVMT") {
-       fee = 0.1 * 10 ** 18;
+        fee = 0.1 * 10**18;
+    }
+
+    // Keeps track of total minted nfts
+    function totalToken() public view returns (uint256) {
+        return _tokenIdTracker.current();
     }
 
     // Minting functions
-    function createUnpublishedItem(string memory tokenURI) public payable {
-        require(msg.value >= PRICE, "Value below price");
-    
+    function createUnpublishedItem(
+        uint256[] memory _tokensId,
+        string memory tokenURI
+    ) public payable {
+        uint256 total = totalToken();
+        require(total + _tokensId.length <= MAX_ELEMENTS, "Max limit of NFTs");
+        require(msg.value >= price(_tokensId.length), "Value below price");
+
         address unpublishedOwner = _msgSender();
-        uint256 newItemId = _tokenIds.current();
 
-        _mintItem(unpublishedOwner, newItemId);
-        _setTokenURI(newItemId, tokenURI);
+        for (uint8 i = 0; i < _tokensId.length; i++) {
+            _mintItem(unpublishedOwner, _tokensId[i]);
+            _setTokenURI(_tokensId[i], tokenURI);
+        }
 
-        setApprovalForAll(unpublishedOwner, true);
     }
 
     function _mintItem(address _to, uint256 _tokenId) private {
-
-        _tokenIds.increment();
+        _tokenIdTracker.increment();
         _safeMint(_to, _tokenId);
 
         emit NewMintEvent(_tokenId);
@@ -52,4 +62,7 @@ contract SoundVerseNFT is ERC721URIStorage, Ownable {
         _burn(tokenId);
     }
 
+    function price(uint256 _count) public pure returns (uint256) {
+        return PRICE.mul(_count);
+    }
 }

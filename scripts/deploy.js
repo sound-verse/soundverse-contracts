@@ -13,6 +13,11 @@ async function main() {
   await token.deployed();
   console.log("SoundVerseToken deployed to:", token.address);
 
+  const SoundVerseNFT = await hre.ethers.getContractFactory("SoundVerseNFT");
+  const nft = await SoundVerseNFT.deploy(SoundVerseNFT);
+  await nft.deployed();
+  console.log("SoundVerseNFT deployed to:", nft.address);
+
   // let config = `
   // export const nftmarketaddress = "${nftMarket.address}"
   // export const nftaddress = "${nft.address}"
