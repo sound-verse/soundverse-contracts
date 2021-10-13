@@ -8,16 +8,18 @@ import "./PercentageCalculator.sol";
 
 contract Vesting is Ownable {
     uint256 public startDate;
-    uint256 public endDate;
-    uint256 internal totalTimeVested;
+    uint256 internal totalTimeVesting;
     uint256 public totalPercentages;
     uint256 public cumulativeAmountToVest;
+    bool public paused;
     IERC20 internal token;
 
     struct Recipient {
         uint256 withdrawnAmount;
         uint256 withdrawPercentage;
         uint256 startDate;
+        uint256 endDate;
+
     }
     uint256 public totalRecipients;
     mapping(address => Recipient) public recipients;
@@ -44,12 +46,12 @@ contract Vesting is Ownable {
 
     /**
      * @param _tokenAddress The address of the SVJ token
-     * @param _totalTimeVested The total duration investors are locked for. 6 quarters minimum
+     * @param _totalTimeVesting The total duration investors are locked for. 6 quarters minimum
      * @param _cumulativeAmountToVest  The total amount of tokens that will be distributed to investors
      */
     constructor(
         address _tokenAddress,
-        uint256 _totalTimeVested,
+        uint256 _totalTimeVesting,
         uint256 _cumulativeAmountToVest
     ) {
         require(
@@ -57,8 +59,9 @@ contract Vesting is Ownable {
             "token address can not be zero address"
         );
         token = IERC20(_tokenAddress);
-        totalTimeVested = _totalTimeVested;
+        totalTimeVesting = _totalTimeVesting;
         cumulativeAmountToVest = _cumulativeAmountToVest;
+        paused = false;
     }
 
     /**
@@ -72,7 +75,6 @@ contract Vesting is Ownable {
         );
 
         startDate = _startDate;
-        endDate = startDate + totalTimeVested;
         emit LogStartDateSet(address(msg.sender), _startDate);
     }
 
@@ -83,7 +85,9 @@ contract Vesting is Ownable {
      */
     function addRecipient(
         address _recipientAddress,
-        uint256 _withdrawPercentage
+        uint256 _withdrawPercentage,
+        uint256 _startDate
+
     ) public onlyOwner onlyValidPercentages(_withdrawPercentage) {
         require(
             _recipientAddress != address(0),
@@ -96,7 +100,9 @@ contract Vesting is Ownable {
         recipients[_recipientAddress] = Recipient(
             0,
             _withdrawPercentage,
-            block.timestamp
+            block.timestamp,
+            _startDate + totalTimeVesting
+
         );
         emit LogRecipientAdded(_recipientAddress, _withdrawPercentage);
     }
@@ -108,7 +114,8 @@ contract Vesting is Ownable {
      */
     function addMultipleRecipients(
         address[] memory _recipients,
-        uint256[] memory _withdrawPercentages
+        uint256[] memory _withdrawPercentages,
+        uint256[] memory _startDate
     ) public onlyOwner {
         require(
             _recipients.length < 230,
@@ -125,7 +132,8 @@ contract Vesting is Ownable {
                 "Total percentages exceeds 100%"
             );
             totalRecipients++;
-            addRecipient(_recipients[i], _withdrawPercentages[i]);
+            addRecipient(_recipients[i], _withdrawPercentages[i]
+            ,_startDate[i]);
         }
     }
 
@@ -133,9 +141,12 @@ contract Vesting is Ownable {
      * @dev Function that withdraws all available tokens
      */
     function claim() public {
+        uint256 _endDate = recipients[msg.sender].endDate;
+
         require(startDate != 0, "The vesting hasn't started");
         require(block.timestamp >= startDate, "The vesting hasn't started");
-        require(block.timestamp >= endDate, "The vesting period has not ended");
+        require(block.timestamp >= _endDate, "The vesting period has not ended");
+        require(paused != true,"Vesting is paused");
 
         uint256 calculatedAmount = PercentageCalculator.div(
             cumulativeAmountToVest,
@@ -152,7 +163,9 @@ contract Vesting is Ownable {
      * @return _owedAmount The amount that the user can withdraw at the current period.
      */
     function hasClaim() public view returns (uint256 _owedAmount) {
-        if (block.timestamp <= startDate && block.timestamp >= endDate) {
+        require(paused != true,"Vesting is paused");
+        uint256 _endDate = recipients[msg.sender].endDate;
+        if (block.timestamp <= startDate && block.timestamp >= _endDate) {
             return 0;
         }
 
@@ -161,5 +174,17 @@ contract Vesting is Ownable {
             recipients[msg.sender].withdrawPercentage
         );
         return calculatedAmount;
+    }
+    /**
+     * @dev Function that pauses all claims. 
+     */
+    function vestingPause() public onlyOwner{
+        if(paused){
+            paused = false;
+        }
+        if(!paused){
+            paused = true;
+        }
+        
     }
 }
