@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./PercentageCalculator.sol";
 
 contract Vesting is Ownable {
-    uint256 public startDate;
     uint256 internal totalTimeVesting;
     uint256 public totalPercentages;
     uint256 public cumulativeAmountToVest;
@@ -19,7 +18,6 @@ contract Vesting is Ownable {
         uint256 withdrawPercentage;
         uint256 startDate;
         uint256 endDate;
-
     }
     uint256 public totalRecipients;
     mapping(address => Recipient) public recipients;
@@ -34,7 +32,7 @@ contract Vesting is Ownable {
      */
     modifier onlyValidPercentages(uint256 _percentage) {
         require(
-            _percentage < 100000,
+            _percentage <= 100000,
             "Provided percentage should be less than 100%"
         );
         require(
@@ -65,20 +63,6 @@ contract Vesting is Ownable {
     }
 
     /**
-     * @dev Function that sets the start date of the Vesting
-     * @param _startDate The start date of the veseting presented as a timestamp
-     */
-    function setStartDate(uint256 _startDate) public onlyOwner {
-        require(
-            _startDate >= block.timestamp,
-            "Start Date can't be in the past"
-        );
-
-        startDate = _startDate;
-        emit LogStartDateSet(address(msg.sender), _startDate);
-    }
-
-    /**
      * @dev Function add recipient to the vesting contract
      * @param _recipientAddress The address of the recipient
      * @param _withdrawPercentage The percentage that the recipient should receive in each vesting period
@@ -86,8 +70,8 @@ contract Vesting is Ownable {
     function addRecipient(
         address _recipientAddress,
         uint256 _withdrawPercentage,
-        uint256 _startDate
-
+        uint256 _startDate,
+        uint256 _endDate
     ) public onlyOwner onlyValidPercentages(_withdrawPercentage) {
         require(
             _recipientAddress != address(0),
@@ -100,9 +84,8 @@ contract Vesting is Ownable {
         recipients[_recipientAddress] = Recipient(
             0,
             _withdrawPercentage,
-            block.timestamp,
-            _startDate + totalTimeVesting
-
+            _startDate,
+            _endDate
         );
         emit LogRecipientAdded(_recipientAddress, _withdrawPercentage);
     }
@@ -115,8 +98,9 @@ contract Vesting is Ownable {
     function addMultipleRecipients(
         address[] memory _recipients,
         uint256[] memory _withdrawPercentages,
-        uint256[] memory _startDate
-    ) public onlyOwner {
+        uint256[] memory _startDate,
+        uint256[] memory _endDate
+    ) public  onlyOwner {
         require(
             _recipients.length < 230,
             "The recipients must be not more than 230"
@@ -125,15 +109,18 @@ contract Vesting is Ownable {
             _recipients.length == _withdrawPercentages.length,
             "The two arryas are with different length"
         );
+
         for (uint256 i; i < _recipients.length; i++) {
-            totalPercentages = totalPercentages + _withdrawPercentages[i];
-            require(
-                totalPercentages <= 100000,
-                "Total percentages exceeds 100%"
+            // No check on percentages is needed here as everything is 
+            // done in the function addRecipient
+            addRecipient(
+                _recipients[i],
+                _withdrawPercentages[i],
+                _startDate[i],
+                _endDate[i]
             );
             totalRecipients++;
-            addRecipient(_recipients[i], _withdrawPercentages[i]
-            ,_startDate[i]);
+
         }
     }
 
@@ -141,12 +128,21 @@ contract Vesting is Ownable {
      * @dev Function that withdraws all available tokens
      */
     function claim() public {
-        uint256 _endDate = recipients[msg.sender].endDate;
+       
 
-        require(startDate != 0, "The vesting hasn't started");
-        require(block.timestamp >= startDate, "The vesting hasn't started");
-        require(block.timestamp >= _endDate, "The vesting period has not ended");
-        require(paused != true,"Vesting is paused");
+        require(
+            recipients[msg.sender].startDate != 0,
+            "The vesting hasn't started"
+        );
+        require(
+            block.timestamp >= recipients[msg.sender].startDate,
+            "The vesting hasn't started"
+        );
+        require(
+            block.timestamp >= recipients[msg.sender].endDate,
+            "The vesting period has not ended"
+        );
+        require(paused != true, "Vesting is paused");
 
         uint256 calculatedAmount = PercentageCalculator.div(
             cumulativeAmountToVest,
@@ -163,9 +159,11 @@ contract Vesting is Ownable {
      * @return _owedAmount The amount that the user can withdraw at the current period.
      */
     function hasClaim() public view returns (uint256 _owedAmount) {
-        require(paused != true,"Vesting is paused");
-        uint256 _endDate = recipients[msg.sender].endDate;
-        if (block.timestamp <= startDate && block.timestamp >= _endDate) {
+        require(paused != true, "Vesting is paused");
+        if (
+            block.timestamp <= recipients[msg.sender].startDate &&
+            block.timestamp >= recipients[msg.sender].endDate
+        ) {
             return 0;
         }
 
@@ -175,16 +173,27 @@ contract Vesting is Ownable {
         );
         return calculatedAmount;
     }
+
     /**
-     * @dev Function that pauses all claims. 
+     * @dev Function that pauses all claims.
      */
-    function vestingPause() public onlyOwner{
-        if(paused){
+    function vestingPause() public onlyOwner {
+        if (paused) {
             paused = false;
         }
-        if(!paused){
+        if (!paused) {
             paused = true;
         }
+    }
+
+    /**
+     * @dev Recipient Getter. Can't check if key exisits explicitly
+     * @param _recipient recipient addresses. 
+     */
+    function getRecipient(
+        address _recipient
         
+    ) public view returns (uint256) {
+        return recipients[_recipient].withdrawPercentage;
     }
 }
