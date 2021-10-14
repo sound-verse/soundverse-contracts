@@ -1,15 +1,7 @@
 /* eslint-disable prettier/prettier */
 const { expect } = require('chai')
+const { ethers } = require('hardhat')
 const { network } = require('hardhat')
-
-// can't use openzeppelin due to hardhat runtime env
-
-// const {
-//   time,
-//   BN,
-//   expectEvent,
-//   expectRevert,
-// } = require('@openzeppelin/test-helpers')
 
 describe('Vest.contract', function () {
   let SoundVerseTokenFactory
@@ -24,7 +16,8 @@ describe('Vest.contract', function () {
   let addr2
   let addr3
   let addrs
-  let startTime
+  let timestampBefore
+  let timestampAfter
 
   beforeEach(async function () {
     SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
@@ -80,29 +73,57 @@ describe('Vest.contract', function () {
     ).to.be.revertedWith('Total percentages exceeds 100%')
   })
 
+  it('Checks if pause freezes claims', async function () {
+    const now = Date.now()
+    await expect(await vesting.addRecipient(addr1.address, 100000, now, now))
+      .to.emit(vesting, 'LogRecipientAdded')
+      .withArgs(addr1.address, 100000)
+
+    await vesting.vestingPause()
+    await expect(vesting.connect(addr1).claim()).to.be.revertedWith(
+      'Vesting is paused',
+    )
+  })
+
   // this is the problem test
   describe('When enough time has passed to claim', () => {
     beforeEach(async () => {
-      await network.provider.send('evm_setAutomine', [true])
+      const sevenDays = 7 * 24 * 60 * 60
+
+      const blockNumBefore = await ethers.provider.getBlockNumber()
+      const blockBefore = await ethers.provider.getBlock(blockNumBefore)
+      timestampBefore = blockBefore.timestamp
+
+      await ethers.provider.send('evm_increaseTime', [sevenDays])
+      await ethers.provider.send('evm_mine')
+
+      const blockNumAfter = await ethers.provider.getBlockNumber()
+      const blockAfter = await ethers.provider.getBlock(blockNumAfter)
+      timestampAfter = blockAfter.timestamp
+
+      await soundVerseToken.transfer(vesting.address, 1000000)
     })
 
     it('Claims for recipients and checks edge cases', async function () {
-      const now = Date.now()
+      // const now = Date.now()
       const address1 = addr1.address
       const address2 = addr2.address
+      console.log(timestampBefore)
+
+      console.log(timestampAfter)
       await vesting.addMultipleRecipients(
         [address1, address2],
         [10000, 80000],
-        [now, now],
-        [now, now],
+        [timestampBefore, timestampBefore],
+        [timestampBefore, timestampAfter],
       )
-      // not sure how to get hardhat to wait for the 
-      // transaction to complete before moving forward
-
-      // await new Promise((r) => setTimeout(r, 2000))
+      console.log((await vesting.getStartDate(address1)).toNumber())
       await expect(await vesting.connect(addr3).claim())
         .to.emit(vesting, 'LogTokensClaimed')
         .withArgs(addr3.address, 0)
+      await expect(await vesting.connect(addr1).claim())
+        .to.emit(vesting, 'LogTokensClaimed')
+        .withArgs(addr1.address, 100000)
     })
   })
 })

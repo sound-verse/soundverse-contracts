@@ -100,7 +100,7 @@ contract Vesting is Ownable {
         uint256[] memory _withdrawPercentages,
         uint256[] memory _startDate,
         uint256[] memory _endDate
-    ) public  onlyOwner {
+    ) public onlyOwner {
         require(
             _recipients.length < 230,
             "The recipients must be not more than 230"
@@ -111,7 +111,7 @@ contract Vesting is Ownable {
         );
 
         for (uint256 i; i < _recipients.length; i++) {
-            // No check on percentages is needed here as everything is 
+            // No check on percentages is needed here as everything is
             // done in the function addRecipient
             addRecipient(
                 _recipients[i],
@@ -120,16 +120,14 @@ contract Vesting is Ownable {
                 _endDate[i]
             );
             totalRecipients++;
-
         }
     }
 
     /**
-     * @dev Function that withdraws all available tokens
+     * @dev Function that withdraws all available tokens 
+     * when vesting is over
      */
     function claim() public {
-       
-
         require(
             recipients[msg.sender].startDate != 0,
             "The vesting hasn't started"
@@ -142,13 +140,14 @@ contract Vesting is Ownable {
             block.timestamp >= recipients[msg.sender].endDate,
             "The vesting period has not ended"
         );
-        require(paused != true, "Vesting is paused");
+        require(paused == false, "Vesting is paused");
 
         uint256 calculatedAmount = PercentageCalculator.div(
             cumulativeAmountToVest,
             recipients[msg.sender].withdrawPercentage
         );
         recipients[msg.sender].withdrawnAmount = calculatedAmount;
+        recipients[msg.sender].withdrawPercentage = 0;
         bool result = token.transfer(msg.sender, calculatedAmount);
         require(result, "The claim was not successful");
         emit LogTokensClaimed(msg.sender, calculatedAmount);
@@ -159,7 +158,7 @@ contract Vesting is Ownable {
      * @return _owedAmount The amount that the user can withdraw at the current period.
      */
     function hasClaim() public view returns (uint256 _owedAmount) {
-        require(paused != true, "Vesting is paused");
+        require(paused == false, "Vesting is paused");
         if (
             block.timestamp <= recipients[msg.sender].startDate &&
             block.timestamp >= recipients[msg.sender].endDate
@@ -178,22 +177,23 @@ contract Vesting is Ownable {
      * @dev Function that pauses all claims.
      */
     function vestingPause() public onlyOwner {
-        if (paused) {
+        if (paused == true) {
             paused = false;
-        }
-        if (!paused) {
+        } else {
             paused = true;
         }
     }
 
     /**
      * @dev Recipient Getter. Can't check if key exisits explicitly
-     * @param _recipient recipient addresses. 
+     * so if 0 is returned it does not exist anything greater it does
+     * @param _recipient recipient addresses.
      */
-    function getRecipient(
-        address _recipient
-        
-    ) public view returns (uint256) {
+    function getRecipient(address _recipient) public view returns (uint256) {
         return recipients[_recipient].withdrawPercentage;
+    }
+
+    function getStartDate(address _recipient) public view returns (uint256) {
+        return recipients[_recipient].startDate;
     }
 }
