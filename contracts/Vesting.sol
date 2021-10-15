@@ -77,6 +77,7 @@ contract Vesting is Ownable {
             _recipientAddress != address(0),
             "Recepient Address can't be zero address"
         );
+        require(_startDate != 0, "startDate can't be 0");
         totalPercentages = totalPercentages + _withdrawPercentage;
         require(totalPercentages <= 100000, "Total percentages exceeds 100%");
         totalRecipients++;
@@ -124,14 +125,10 @@ contract Vesting is Ownable {
     }
 
     /**
-     * @dev Function that withdraws all available tokens 
+     * @dev Function that withdraws all available tokens
      * when vesting is over
      */
     function claim() public {
-        require(
-            recipients[msg.sender].startDate != 0,
-            "The vesting hasn't started"
-        );
         require(
             block.timestamp >= recipients[msg.sender].startDate,
             "The vesting hasn't started"
@@ -141,6 +138,8 @@ contract Vesting is Ownable {
             "The vesting period has not ended"
         );
         require(paused == false, "Vesting is paused");
+        // require(recipients[msg.sender].withdrawPercentage > 0,"You have nothing to claim");
+
 
         uint256 calculatedAmount = PercentageCalculator.div(
             cumulativeAmountToVest,
@@ -160,8 +159,8 @@ contract Vesting is Ownable {
     function hasClaim() public view returns (uint256 _owedAmount) {
         require(paused == false, "Vesting is paused");
         if (
-            block.timestamp <= recipients[msg.sender].startDate &&
-            block.timestamp >= recipients[msg.sender].endDate
+            block.timestamp < recipients[msg.sender].startDate ||
+            block.timestamp < recipients[msg.sender].endDate
         ) {
             return 0;
         }
@@ -191,9 +190,5 @@ contract Vesting is Ownable {
      */
     function getRecipient(address _recipient) public view returns (uint256) {
         return recipients[_recipient].withdrawPercentage;
-    }
-
-    function getStartDate(address _recipient) public view returns (uint256) {
-        return recipients[_recipient].startDate;
     }
 }
