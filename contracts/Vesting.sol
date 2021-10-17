@@ -5,11 +5,13 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./PercentageCalculator.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract Vesting is Ownable {
-    uint256 internal totalTimeVesting;
+    using SafeMath for uint256;
+    uint256 internal periodLength = 90 days;
     uint256 public totalPercentages;
-    uint256 public cumulativeAmountToVest;
+    uint256[6] public cumulativeAmountToVest;
     bool public paused;
     IERC20 internal token;
 
@@ -17,12 +19,10 @@ contract Vesting is Ownable {
         uint256 withdrawnAmount;
         uint256 withdrawPercentage;
         uint256 startDate;
-        uint256 endDate;
     }
     uint256 public totalRecipients;
     mapping(address => Recipient) public recipients;
 
-    event LogStartDateSet(address setter, uint256 startDate);
     event LogRecipientAdded(address recipient, uint256 withdrawPercentage);
     event LogTokensClaimed(address recipient, uint256 amount);
 
@@ -44,20 +44,17 @@ contract Vesting is Ownable {
 
     /**
      * @param _tokenAddress The address of the SVJ token
-     * @param _totalTimeVesting The total duration investors are locked for. 6 quarters minimum
      * @param _cumulativeAmountToVest  The total amount of tokens that will be distributed to investors
      */
     constructor(
         address _tokenAddress,
-        uint256 _totalTimeVesting,
-        uint256 _cumulativeAmountToVest
+        uint256[6] memory _cumulativeAmountToVest
     ) {
         require(
             _tokenAddress != address(0),
             "token address can not be zero address"
         );
         token = IERC20(_tokenAddress);
-        totalTimeVesting = _totalTimeVesting;
         cumulativeAmountToVest = _cumulativeAmountToVest;
         paused = false;
     }
@@ -70,23 +67,21 @@ contract Vesting is Ownable {
     function addRecipient(
         address _recipientAddress,
         uint256 _withdrawPercentage,
-        uint256 _startDate,
-        uint256 _endDate
+        uint256 _startDate
     ) public onlyOwner onlyValidPercentages(_withdrawPercentage) {
         require(
             _recipientAddress != address(0),
             "Recepient Address can't be zero address"
         );
         require(_startDate != 0, "startDate can't be 0");
-        totalPercentages = totalPercentages + _withdrawPercentage;
+        totalPercentages = totalPercentages.add(_withdrawPercentage);
         require(totalPercentages <= 100000, "Total percentages exceeds 100%");
         totalRecipients++;
 
         recipients[_recipientAddress] = Recipient(
             0,
             _withdrawPercentage,
-            _startDate,
-            _endDate
+            _startDate
         );
         emit LogRecipientAdded(_recipientAddress, _withdrawPercentage);
     }
@@ -99,8 +94,7 @@ contract Vesting is Ownable {
     function addMultipleRecipients(
         address[] memory _recipients,
         uint256[] memory _withdrawPercentages,
-        uint256[] memory _startDate,
-        uint256[] memory _endDate
+        uint256[] memory _startDate
     ) public onlyOwner {
         require(
             _recipients.length < 230,
@@ -117,8 +111,7 @@ contract Vesting is Ownable {
             addRecipient(
                 _recipients[i],
                 _withdrawPercentages[i],
-                _startDate[i],
-                _endDate[i]
+                _startDate[i]
             );
             totalRecipients++;
         }
@@ -133,23 +126,14 @@ contract Vesting is Ownable {
             block.timestamp >= recipients[msg.sender].startDate,
             "The vesting hasn't started"
         );
-        require(
-            block.timestamp >= recipients[msg.sender].endDate,
-            "The vesting period has not ended"
-        );
+
         require(paused == false, "Vesting is paused");
-        // require(recipients[msg.sender].withdrawPercentage > 0,"You have nothing to claim");
 
-
-        uint256 calculatedAmount = PercentageCalculator.div(
-            cumulativeAmountToVest,
-            recipients[msg.sender].withdrawPercentage
-        );
+        (uint256 owedAmount, uint256 calculatedAmount) = calculateAmount();
         recipients[msg.sender].withdrawnAmount = calculatedAmount;
-        recipients[msg.sender].withdrawPercentage = 0;
-        bool result = token.transfer(msg.sender, calculatedAmount);
+        bool result = token.transfer(msg.sender, owedAmount);
         require(result, "The claim was not successful");
-        emit LogTokensClaimed(msg.sender, calculatedAmount);
+        emit LogTokensClaimed(msg.sender, owedAmount);
     }
 
     /**
@@ -158,18 +142,12 @@ contract Vesting is Ownable {
      */
     function hasClaim() public view returns (uint256 _owedAmount) {
         require(paused == false, "Vesting is paused");
-        if (
-            block.timestamp < recipients[msg.sender].startDate ||
-            block.timestamp < recipients[msg.sender].endDate
-        ) {
+        if (block.timestamp < recipients[msg.sender].startDate) {
             return 0;
         }
 
-        uint256 calculatedAmount = PercentageCalculator.div(
-            cumulativeAmountToVest,
-            recipients[msg.sender].withdrawPercentage
-        );
-        return calculatedAmount;
+        (uint256 owedAmount, uint256 _calc) = calculateAmount();
+        return owedAmount;
     }
 
     /**
@@ -183,6 +161,30 @@ contract Vesting is Ownable {
         }
     }
 
+    function calculateAmount()
+        internal
+        view
+        returns (uint256 owedAmount, uint256 calculatedAmountI)
+    {
+        uint256 period = block
+            .timestamp
+            .sub(recipients[msg.sender].startDate)
+            .div(periodLength);
+
+        if (period >= cumulativeAmountToVest.length) {
+            period = cumulativeAmountToVest.length.sub(1);
+        }
+        uint256 calculatedAmount = percentageCalculatorDiv(
+            cumulativeAmountToVest[period],
+            recipients[msg.sender].withdrawPercentage
+        );
+        owedAmount = calculatedAmount.sub(
+            recipients[msg.sender].withdrawnAmount
+        );
+
+        return (owedAmount, calculatedAmount);
+    }
+
     /**
      * @dev Recipient Getter. Can't check if key exisits explicitly
      * so if 0 is returned it does not exist anything greater it does
@@ -190,5 +192,18 @@ contract Vesting is Ownable {
      */
     function getRecipient(address _recipient) public view returns (uint256) {
         return recipients[_recipient].withdrawPercentage;
+    }
+
+    function percentageCalculatorDiv(uint256 _amount, uint256 _percentage)
+        public
+        pure
+        returns (uint256)
+    {
+        /*
+	Note: Percentages will be provided in thousands to represent 3 digits after the decimal point.
+	The division is made by 100000 
+	*/
+
+        return _amount.mul(_percentage).div(100000);
     }
 }
