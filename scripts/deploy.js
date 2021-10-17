@@ -1,28 +1,27 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
 const fs = require('fs');
 
 async function main() {
 
+  console.log("Deploying ERC20 SoundVerse Token contract")
+
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
-  const token = await SoundVerseToken.deploy(SoundVerseToken, 6000000000);
+  const token = await SoundVerseToken.deploy(900000000);
   await token.deployed();
   console.log("SoundVerseToken deployed to:", token.address);
 
+  console.log("Deploying ERC721 SoundVerse NFT contract")
+
   const SoundVerseNFT = await hre.ethers.getContractFactory("SoundVerseNFT");
-  const nft = await SoundVerseNFT.deploy(SoundVerseNFT);
+  const nft = await SoundVerseNFT.deploy();
   await nft.deployed();
   console.log("SoundVerseNFT deployed to:", nft.address);
-
-  // let config = `
-  // export const nftmarketaddress = "${nftMarket.address}"
-  // export const nftaddress = "${nft.address}"
-  // `
-  // let data = JSON.stringify(config)
-  // fs.writeFileSync('config.js', JSON.parse(data))
   
 }
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

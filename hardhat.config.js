@@ -1,12 +1,9 @@
-require("dotenv").config();
-
+const config = require('dotenv').config()
 require("@nomiclabs/hardhat-etherscan")
 require("@nomiclabs/hardhat-waffle")
 require("hardhat-gas-reporter")
 const fs = require('fs')
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
 
@@ -15,8 +12,9 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   }
 });
 
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
+if(config.error){
+  throw config.error
+}
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -29,14 +27,13 @@ module.exports = {
     },
     matic: {
       url: process.env.MUMBAI_URL || "",
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY1 !== undefined ? [process.env.PRIVATE_KEY1, process.env.PRIVATE_KEY2] : [],
     }
   },
-  gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
-    currency: "USD",
-  },
-  etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
   },
 };
