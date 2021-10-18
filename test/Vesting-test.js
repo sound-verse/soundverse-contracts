@@ -6,7 +6,6 @@ const { network } = require('hardhat')
 describe('Vest.contract', function () {
   let SoundVerseTokenFactory
   let soundVerseToken
-  let PercentageCalculatorFactory
   let VestingFactory
   let vesting
   let owner
@@ -44,42 +43,38 @@ describe('Vest.contract', function () {
   })
 
   // Tests @function addRecipient
-  it('Adds an Investor & fails on more than 100% allo', async function () {
+  it('Adds an Investor ', async function () {
     const now = Date.now()
-    await expect(await vesting.addRecipient(addr1.address, 100000, now))
+    await expect(await vesting.addRecipient(addr1.address, now,100000))
       .to.emit(vesting, 'LogRecipientAdded')
       .withArgs(addr1.address, 100000)
-    await expect(
-      vesting.addRecipient(addr2.address, 100000, now),
-    ).to.be.revertedWith('Total percentages exceeds 100%')
+    
   })
 
   // Tests @function addMultipleRecipients
-  it('Adds multiple Investors & fails on more than 100% allo', async function () {
+  it('Adds multiple Investors ', async function () {
     const now = Date.now()
     const address1 = addr1.address
     const address2 = addr2.address
     await vesting.addMultipleRecipients(
       [address1, address2],
-      [10000, 80000],
       [now, now],
+      [80000,100000]
     )
-    await expect(await vesting.getRecipient(address1)).to.equal(10000)
-    await expect(await vesting.getRecipient(address2)).to.equal(80000)
-    await expect(
-      vesting.addMultipleRecipients([addr3.address], [20000], [now]),
-    ).to.be.revertedWith('Total percentages exceeds 100%')
+    await expect(await vesting.getRecipient(address1)).to.equal(80000)
+    await expect(await vesting.getRecipient(address2)).to.equal(100000)
+      
   })
 
   describe('When enough time has passed to claim', () => {
     beforeEach(async () => {
-      const sevenDays = 90 * 24 * 60 * 60
+      const ninetyDays = 90 * 24 * 60 * 60
 
       const blockNumBefore = await ethers.provider.getBlockNumber()
       const blockBefore = await ethers.provider.getBlock(blockNumBefore)
       timestampBefore = blockBefore.timestamp
 
-      await ethers.provider.send('evm_increaseTime', [sevenDays])
+      await ethers.provider.send('evm_increaseTime', [ninetyDays])
       await ethers.provider.send('evm_mine')
 
       const blockNumAfter = await ethers.provider.getBlockNumber()
@@ -95,8 +90,8 @@ describe('Vest.contract', function () {
 
       await vesting.addMultipleRecipients(
         [address1, address2],
-        [10000, 80000],
         [timestampBefore, timestampBefore],
+        [100000, 800000]
       )
       // check for users with no claims
       await expect(await vesting.connect(addr3).claim())
@@ -105,7 +100,7 @@ describe('Vest.contract', function () {
       // normal claim
       await expect(await vesting.connect(addr1).claim())
         .to.emit(vesting, 'LogTokensClaimed')
-        .withArgs(addr1.address, 100000)
+        .withArgs(addr1.address, 16667)
 
       // check for double claims
       await expect(vesting.connect(addr1).claim())
@@ -119,17 +114,17 @@ describe('Vest.contract', function () {
 
       await vesting.addMultipleRecipients(
         [address1, address2],
-        [10000, 80000],
         [timestampBefore, timestampBefore],
+        [100000, 800000]
       )
 
       // ideal cases
-      await expect(await vesting.connect(addr2).hasClaim()).to.equal(800000)
+      await expect(await vesting.connect(addr2).hasClaim()).to.equal(133336)
     })
 
     it('Checks if pause freezes claims', async function () {
       await expect(
-        await vesting.addRecipient(addr1.address, 100000, timestampBefore),
+        await vesting.addRecipient(addr1.address, timestampBefore,100000),
       )
         .to.emit(vesting, 'LogRecipientAdded')
         .withArgs(addr1.address, 100000)
