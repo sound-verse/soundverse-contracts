@@ -11,43 +11,27 @@ contract SoundVerseNFT is ERC721URIStorage, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
 
-    Counters.Counter private _tokenIdTracker;
-
     //Constants and variables
-    uint256 public constant MAX_ELEMENTS = 1000;
-    uint256 public constant PRICE = 0.1 ether;
-    uint256 public constant START_AT = 1;
-
-    uint256 internal fee;
+    Counters.Counter private _tokenIdTracker;
+    uint256 public itemPrice;
+    uint256 public fee;
+    mapping (string => bool) public allowedDomains;
 
     //Events
     event NewMintEvent(uint256 indexed id);
 
-    constructor() ERC721("SoundVerse", "SVMT") {
-        fee = 0.1 * 10**18;
-    }
-
-    // Keeps track of total minted nfts
-    function totalToken() public view returns (uint256) {
-        return _tokenIdTracker.current();
-    }
+    constructor() ERC721("SoundVerse", "SVMT") {}
 
     // Minting functions
-    function createUnpublishedItem(
-        uint256[] memory _tokensId,
-        string memory tokenURI
-    ) public payable {
-        uint256 total = totalToken();
-        require(total + _tokensId.length <= MAX_ELEMENTS, "Max limit of NFTs");
-        require(msg.value >= price(_tokensId.length), "Value below price");
+    function createUnpublishedItem(string memory tokenURI) public payable {
+        require( allowedDomains[tokenURI], "TokenURI must be allowed");
 
         address unpublishedOwner = _msgSender();
 
-        for (uint8 i = 0; i < _tokensId.length; i++) {
-            _mintItem(unpublishedOwner, _tokensId[i]);
-            _setTokenURI(_tokensId[i], tokenURI);
-        }
+        uint256 currentTokenId = _tokenIdTracker.current();
 
+        _mintItem(unpublishedOwner, currentTokenId);
+        _setTokenURI(currentTokenId, tokenURI);
     }
 
     function _mintItem(address _to, uint256 _tokenId) private {
@@ -62,7 +46,13 @@ contract SoundVerseNFT is ERC721URIStorage, Ownable {
         _burn(tokenId);
     }
 
-    function price(uint256 _count) public pure returns (uint256) {
-        return PRICE.mul(_count);
+    //utils
+    // Keeps track of total minted nfts
+    function totalToken() public view returns (uint256) {
+        return _tokenIdTracker.current();
+    }
+
+    function addAllowedURI(string memory _allowedURI) public onlyOwner {
+        allowedDomains[_allowedURI] = true;
     }
 }

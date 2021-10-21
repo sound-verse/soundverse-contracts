@@ -6,7 +6,6 @@ describe('NFT contract', function () {
     let soundVerseNFT;
     let tokenURIOne = "test-tokenuri.com/test1";
     let tokenURITwo = "test-tokenuri.com/test2"
-    let tokenURIThree = "test-tokenuri.com/test3"
     let owner;
     let addr1;
 
@@ -19,20 +18,25 @@ describe('NFT contract', function () {
 
     it('creates 2 unpublished items and returns the tokenId', async function () {
 
-        await expect(soundVerseNFT.createUnpublishedItem([1], tokenURIOne, { value: ethers.utils.parseEther("0.1") }))
+        await soundVerseNFT.addAllowedURI(tokenURIOne)
+        await soundVerseNFT.addAllowedURI(tokenURITwo)
+
+        await expect(soundVerseNFT.createUnpublishedItem(tokenURIOne))
+            .to.emit(soundVerseNFT, 'NewMintEvent')
+            .withArgs(0);
+
+        await expect(soundVerseNFT.createUnpublishedItem(tokenURITwo))
             .to.emit(soundVerseNFT, 'NewMintEvent')
             .withArgs(1);
 
-        await expect(soundVerseNFT.createUnpublishedItem([2], tokenURITwo, { value: ethers.utils.parseEther("0.1") }))
-            .to.emit(soundVerseNFT, 'NewMintEvent')
-            .withArgs(2);
-
     });
 
-    it('should revert transaction if not sufficient value transferred', async function (){
+    it('should revert transaction if no tokenUri present', async function (){
 
-        await expect(soundVerseNFT.createUnpublishedItem([3], tokenURIThree, { value: ethers.utils.parseEther("0.01") }))
-            .to.be.revertedWith("Value below price");
+        await soundVerseNFT.addAllowedURI(tokenURIOne)
+
+        await expect(soundVerseNFT.createUnpublishedItem("badURI"))
+            .to.be.revertedWith("TokenURI must be allowed");
 
     });
 
