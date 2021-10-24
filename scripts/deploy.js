@@ -12,10 +12,10 @@ async function main() {
 
   console.log("Deploying ERC721 SoundVerse NFT contract")
 
-  const SoundVerseNFT = await hre.ethers.getContractFactory("SoundVerseNFT");
-  const nft = await SoundVerseNFT.deploy();
+  const SoundVerseERC721 = await hre.ethers.getContractFactory("SoundVerseERC721");
+  const nft = await SoundVerseERC721.deploy();
   await nft.deployed();
-  console.log("SoundVerseNFT deployed to:", nft.address);
+  console.log("SoundVerseERC721 deployed to:", nft.address);
   
 }
 
