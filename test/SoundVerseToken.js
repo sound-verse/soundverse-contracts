@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-describe('Token contract', function () {
+describe("Token.contract", function () {
 
     let SoundVerseToken;
     let soundVerseToken;

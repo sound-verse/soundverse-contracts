@@ -2,6 +2,7 @@ const config = require('dotenv').config()
 require("@nomiclabs/hardhat-etherscan")
 require("@nomiclabs/hardhat-waffle")
 require("hardhat-gas-reporter")
+require("@openzeppelin/hardhat-upgrades");
 const fs = require('fs')
 
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
