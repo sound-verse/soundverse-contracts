@@ -2,6 +2,8 @@ node_modules/
 build/
 settings.json
 .vscode
+package-lock.json
+package.json
 
 #Hardhat files
 cache
