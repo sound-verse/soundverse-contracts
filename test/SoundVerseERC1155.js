@@ -1,4 +1,4 @@
-const { BN, constants } = require("@openzeppelin/test-helpers");
+const { constants } = require("@openzeppelin/test-helpers");
 const { ZERO_ADDRESS } = constants;
 
 const { expect } = require("chai");
@@ -7,11 +7,11 @@ describe('SoundVerseERC1155.contract', function () {
 
     let soundVerseERC1155;
 
-    const firstTokenId = new BN('845');
-    const firstTokenIdAmount = new BN('5000');
+    const firstTokenId = 845;
+    const firstTokenIdAmount = 5000;
 
-    const secondTokenId = new BN('48324');
-    const secondTokenIdAmount = new BN('77875');
+    const secondTokenId = 48324;
+    const secondTokenIdAmount = 77875;
 
     const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
     const MINTER_ROLE = ethers.utils.solidityKeccak256(['string'], ['MINTER_ROLE']);
@@ -47,16 +47,16 @@ describe('SoundVerseERC1155.contract', function () {
 
     describe('minting', function () {
         it('deployer can mint tokens', async function () {
-            const receipt = await soundVerseERC1155.mint(other.address, firstTokenId.toString(), firstTokenIdAmount.toString(), '0x', { from: deployer.address });
+            const receipt = await soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: deployer.address });
             await expect(receipt)
                 .to.emit(soundVerseERC1155, 'TransferSingle')
-                .withArgs(deployer.address, ZERO_ADDRESS, other.address, firstTokenId.toString(), firstTokenIdAmount.toString())
+                .withArgs(deployer.address, ZERO_ADDRESS, other.address, firstTokenId, firstTokenIdAmount)
 
-            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId.toString())).to.equal(firstTokenIdAmount.toString());
+            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId)).to.equal(firstTokenIdAmount);
         });
 
         it('other accounts cannot mint tokens', async function () {
-            await expect(soundVerseERC1155.connect(other).mint(other.address, firstTokenId.toString(), firstTokenIdAmount.toString(), '0x'))
+            await expect(soundVerseERC1155.connect(other).mint(other.address, firstTokenId, firstTokenIdAmount, '0x'))
                 .to.be.revertedWith("ERC1155PresetMinterPauser: must have minter role to mint")
         });
     });
@@ -64,19 +64,19 @@ describe('SoundVerseERC1155.contract', function () {
     describe('batched minting', function () {
         it('deployer can batch mint tokens', async function () {
             const receipt = await soundVerseERC1155.mintBatch(
-                other.address, [firstTokenId.toString(), secondTokenId.toString()], [firstTokenIdAmount.toString(), secondTokenIdAmount.toString()], '0x', { from: deployer.address },
+                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], '0x', { from: deployer.address },
             );
 
             await expect(receipt)
                 .to.emit(soundVerseERC1155, 'TransferBatch')
-                .withArgs(deployer.address, ZERO_ADDRESS, other.address, [firstTokenId.toString(), secondTokenId.toString()], [firstTokenIdAmount.toString(), secondTokenIdAmount.toString()]);
+                .withArgs(deployer.address, ZERO_ADDRESS, other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount]);
 
-            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId.toString())).to.equal(firstTokenIdAmount.toString());
+            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId)).to.equal(firstTokenIdAmount);
         });
 
         it('other accounts cannot batch mint tokens', async function () {
             await expect(soundVerseERC1155.connect(other).mintBatch(
-                other.address, [firstTokenId.toString(), secondTokenId.toString()], [firstTokenIdAmount.toString(), secondTokenIdAmount.toString()], '0x', { from: other.address }
+                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], '0x', { from: other.address }
             )).to.be.revertedWith("ERC1155PresetMinterPauser: must have minter role to mint");
         });
 
@@ -106,7 +106,7 @@ describe('SoundVerseERC1155.contract', function () {
         it('cannot mint while paused', async function () {
             await soundVerseERC1155.pause({ from: deployer.address });
 
-            await expect(soundVerseERC1155.mint(other.address, firstTokenId.toString(), firstTokenIdAmount.toString(), '0x', { from: deployer.address })
+            await expect(soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: deployer.address })
             ).to.be.revertedWith("ERC1155Pausable: token transfer while paused");
         });
 
@@ -123,14 +123,14 @@ describe('SoundVerseERC1155.contract', function () {
 
     describe('burning', function () {
         it('holders can burn their tokens', async function () {
-            await soundVerseERC1155.mint(other.address, firstTokenId.toString(), firstTokenIdAmount.toString(), '0x', { from: deployer.address });
+            await soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: deployer.address });
 
-            const receipt = await soundVerseERC1155.connect(other).burn(other.address, firstTokenId.toString(), firstTokenIdAmount.subn(1).toString(), { from: other.address });
+            const receipt = await soundVerseERC1155.connect(other).burn(other.address, firstTokenId, 4999, { from: other.address });
             expect(receipt)
                 .to.emit(soundVerseERC1155, 'TransferSingle')
-                .withArgs(other.address, other.address, ZERO_ADDRESS, firstTokenId.toString(), firstTokenIdAmount.subn(1).toString());
+                .withArgs(other.address, other.address, ZERO_ADDRESS, firstTokenId, 4999);
 
-            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId.toString())).to.equal(1);
+            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId)).to.equal(1);
         });
     });
 });
