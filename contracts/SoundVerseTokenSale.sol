@@ -35,13 +35,16 @@ contract SoundVerseTokenSale is Ownable, ReentrancyGuard {
             getThisAddressTokenBalance() >= _numberOfTokens,
             "Can not buy more than available"
         );
+
+        //Keep track of sold tokens
+        tokensSold += _numberOfTokens;
+
         //Requires that a transfer is successful
         require(
             tokenContract.transfer(msg.sender, _numberOfTokens),
             "Transfer failed"
         );
-        //Keep track of sold tokens
-        tokensSold += _numberOfTokens;
+
         //Trigger sell event
         emit Sell(msg.sender, _numberOfTokens);
     }
