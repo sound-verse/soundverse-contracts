@@ -55,9 +55,13 @@ describe('SoundVerseERC1155.contract', function () {
             expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId)).to.equal(firstTokenIdAmount);
         });
 
-        it('other accounts cannot mint tokens', async function () {
-            await expect(soundVerseERC1155.connect(other).mint(other.address, firstTokenId, firstTokenIdAmount, '0x'))
-                .to.be.revertedWith("ERC1155PresetMinterPauser: must have minter role to mint")
+        it('other accounts can also mint tokens', async function () {
+            const receipt = await soundVerseERC1155.connect(other).mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: other.address });
+            await expect(receipt)
+                .to.emit(soundVerseERC1155, 'TransferSingle')
+                .withArgs(other.address, ZERO_ADDRESS, other.address, firstTokenId, firstTokenIdAmount)
+
+            expect(await soundVerseERC1155.connect(other).balanceOf(other.address, firstTokenId)).to.equal(firstTokenIdAmount);
         });
     });
 
@@ -74,10 +78,16 @@ describe('SoundVerseERC1155.contract', function () {
             expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId)).to.equal(firstTokenIdAmount);
         });
 
-        it('other accounts cannot batch mint tokens', async function () {
-            await expect(soundVerseERC1155.connect(other).mintBatch(
-                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], '0x', { from: other.address }
-            )).to.be.revertedWith("ERC1155PresetMinterPauser: must have minter role to mint");
+        it('other accounts can also batch mint tokens', async function () {
+            const receipt = await soundVerseERC1155.connect(other).mintBatch(
+                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], '0x', { from: other.address },
+            );
+
+            await expect(receipt)
+                .to.emit(soundVerseERC1155, 'TransferBatch')
+                .withArgs(other.address, ZERO_ADDRESS, other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount]);
+
+            expect(await soundVerseERC1155.balanceOf(other.address, firstTokenId)).to.equal(firstTokenIdAmount);
         });
 
     });

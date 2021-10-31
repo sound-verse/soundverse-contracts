@@ -39,6 +39,7 @@ contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable,
         uint256 amount,
         bytes memory data
     ) public virtual {
+        _setupRole(MINTER_ROLE, msg.sender);
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC1155PresetMinterPauser: must have minter role to mint");
 
         _mint(to, id, amount, data);
@@ -53,6 +54,7 @@ contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable,
         uint256[] memory amounts,
         bytes memory data
     ) public virtual {
+        _setupRole(MINTER_ROLE, msg.sender);
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC1155PresetMinterPauser: must have minter role to mint");
 
         _mintBatch(to, ids, amounts, data);
