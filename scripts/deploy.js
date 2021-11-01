@@ -7,20 +7,12 @@ async function main() {
   console.log("Deploying ERC20 SoundVerse Token contract")
 
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
-  const SoundVerseTokenSale = await hre.ethers.getContractFactory("SoundVerseTokenSale");
   const Vesting = await hre.ethers.getContractFactory('Vesting')
 
   const token = await SoundVerseToken.deploy(900000000);
   await token.deployed();
   
   console.log("SoundVerseToken deployed to:", token.address);
-  console.log("Deploying SoundVerseTokenSale");
-
-  // 0.02 usd = 0,0000048 eth = 4800000000000 wei
-  const tokenSale = await SoundVerseTokenSale.deploy(token.address, 4800000000000);
-  await tokenSale.deployed;
-
-  console.log("SoundVerseTokenSale deployed");
 
   const vest = await Vesting.deploy(token.address, date, [
     1000000,
