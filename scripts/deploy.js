@@ -40,6 +40,13 @@ async function main() {
   const nft1155 = await SoundVerseERC1155.deploy();
   await nft1155.deployed();
   console.log("SoundVerseERC721 deployed to:", nft1155.address);
+
+  console.log("Deploying the ERC1155 SALE contract")
+
+  const NftTokenSale = await hre.ethers.getContractFactory("NftTokenSale");
+  const nftTokenSale = await NftTokenSale.deploy(nft1155.address, 1);
+  await nftTokenSale.deployed();
+  console.log("NftTokenSale deployed to:", nftTokenSale.address);
   
 }
 
