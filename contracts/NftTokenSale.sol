@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 
 contract NftTokenSale is Ownable, ReentrancyGuard {
-    address internal admin;
+    address payable internal admin;
     SoundVerseERC1155 public nftContract;
     uint256 public tokenPrice;
 
@@ -23,7 +23,7 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
 
     constructor(SoundVerseERC1155 _nftContract, uint256 _tokenPrice) {
         //Assign admin
-        admin = msg.sender;
+        admin = payable(owner());
         require(_tokenPrice > 0, "Price must be greater than zero");
         //NFT contract
         nftContract = _nftContract;
@@ -42,12 +42,9 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
             "Not the correct price amount"
         );
 
-        //Requieres the correct pricr
-        require(msg.value >= tokenPrice, "The price does not match");
-
         //Requires that the contract has enough tokens
         require(
-            getThisAddressTokenBalance(_tokenId) >= _amountOfTokens,
+            getThisAddressTokenBalance(_from, _tokenId) >= _amountOfTokens,
             "Can not buy more than available"
         );
 
@@ -64,20 +61,20 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
     }
 
     //Withdraw funds
-    function withdrawTo(address payable _payee, uint256 _amount) public onlyOwner {
-        require(_payee != address(0) && _payee != address(this));
-        require(_amount > 0 && _amount <= address(this).balance);
-        _payee.transfer(_amount);
-        emit Withdrawal(_payee, _amount);
+    function withdrawTo(address payable _payee, uint256 _amount) public payable onlyOwner {
+        _payee = admin;
+        require(_amount > 0, "Not able to withdraw zero");
+        payable(_payee).transfer(_amount);
+        emit Withdrawal(admin, _amount);
     }
 
     //Returns this addresses balance
-    function getThisAddressTokenBalance(uint256 _tokenId)
+    function getThisAddressTokenBalance(address _from, uint256 _tokenId)
         public
         view
         returns (uint256)
     {
-        return nftContract.balanceOf(address(this), _tokenId);
+        return nftContract.balanceOf(_from, _tokenId);
     }
 
     function setCurrentPrice(uint256 _currentPrice) public onlyOwner {
