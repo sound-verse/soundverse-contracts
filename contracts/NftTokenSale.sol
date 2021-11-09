@@ -16,29 +16,32 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
         address _seller,
         address _buyer,
         uint256 _tokenId,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _purchasePrice
     );
 
     event Withdrawal(address _payee, uint256 _amount);
 
-    constructor(SoundVerseERC1155 _nftContract, uint256 _tokenPrice) {
+    constructor(SoundVerseERC1155 _nftContract) {
         //Assign admin
         admin = payable(owner());
-        require(_tokenPrice > 0, "Price must be greater than zero");
         //NFT contract
         nftContract = _nftContract;
-        //NFT price
-        tokenPrice = _tokenPrice;
     }
 
     function purchaseTokens(
         address _from,
         uint256 _tokenId,
+        uint256 _tokenPrice,
         uint256 _amountOfTokens
     ) public payable nonReentrant {
+        //Require tokenPrice to be greater than zero
+        require(_tokenPrice > 0, "Price must be greater than zero");
+
         //Requires that the correct amount is bought
+        uint256 purchasePrice = msg.value;
         require(
-            msg.value == SafeMath.mul(_amountOfTokens, tokenPrice),
+            purchasePrice == SafeMath.mul(_tokenPrice, _amountOfTokens),
             "Not the correct price amount"
         );
 
@@ -57,15 +60,7 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
         );
 
         //Trigger sell event
-        emit SoldNFT(_from, _msgSender(), _tokenId, _amountOfTokens);
-    }
-
-    //Withdraw funds
-    function withdrawTo(address payable _payee, uint256 _amount) public payable onlyOwner {
-        _payee = admin;
-        require(_amount > 0, "Not able to withdraw zero");
-        payable(_payee).transfer(_amount);
-        emit Withdrawal(admin, _amount);
+        emit SoldNFT(_from, _msgSender(), _tokenId, _amountOfTokens, purchasePrice);
     }
 
     //Returns this addresses balance
@@ -77,8 +72,16 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
         return nftContract.balanceOf(_from, _tokenId);
     }
 
-    function setCurrentPrice(uint256 _currentPrice) public onlyOwner {
+    function setCurrentPrice(uint256 _currentPrice) public {
         require(_currentPrice > 0, "Current price must be greater than zero");
         tokenPrice = _currentPrice;
+    }
+
+    //Withdraw funds
+    function withdrawTo() public payable onlyOwner {
+        uint256 amountToWithdraw = msg.value;
+        require(amountToWithdraw > 0, "Not able to withdraw zero");
+        
+        emit Withdrawal(admin, amountToWithdraw);
     }
 }

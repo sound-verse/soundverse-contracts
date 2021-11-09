@@ -44,7 +44,7 @@ async function main() {
   console.log("Deploying the ERC1155 SALE contract")
 
   const NftTokenSale = await hre.ethers.getContractFactory("NftTokenSale");
-  const nftTokenSale = await NftTokenSale.deploy(nft1155.address, 1);
+  const nftTokenSale = await NftTokenSale.deploy(nft1155.address);
   await nftTokenSale.deployed();
   console.log("NftTokenSale deployed to:", nftTokenSale.address);
   

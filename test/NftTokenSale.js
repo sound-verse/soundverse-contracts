@@ -18,7 +18,7 @@ describe("NftTokenSale.contract", function () {
 
         NftTokenSaleFactory = await ethers.getContractFactory("NftTokenSale");
         [owner, addr1] = await ethers.getSigners();
-        nftTokenSale = await NftTokenSaleFactory.deploy(soundVerseERC1155.address, tokenPrice);
+        nftTokenSale = await NftTokenSaleFactory.deploy(soundVerseERC1155.address);
 
         expect(await soundVerseERC1155.mint(owner.address, firstTokenId, tokensAmount, '0x', { from: owner.address }));
     })
@@ -26,32 +26,33 @@ describe("NftTokenSale.contract", function () {
     it('should initialize correctly', async function () {
         expect(await soundVerseERC1155.getRoleMember(DEFAULT_ADMIN_ROLE, 0)).to.equal(owner.address);
         expect(await nftTokenSale.nftContract()).to.equal(soundVerseERC1155.address)
-        expect(await nftTokenSale.tokenPrice()).to.equal(tokenPrice)
     })
 
     it('should throw error if not buying for the correct amount', async function () {
-        await expect(nftTokenSale.purchaseTokens(owner.address, firstTokenId, tokensAmount, { value: 5 * tokenPrice - 1 }))
+        let price = (tokenPrice * 5) + 1
+        await expect(nftTokenSale.purchaseTokens(owner.address, firstTokenId, price, tokensAmount, { value: price }))
             .to.be.revertedWith("Not the correct price amount")
     })
 
     it('should throw error if buying more than total amount', async function () {
-        await expect(nftTokenSale.purchaseTokens(owner.address, firstTokenId, tokensAmount + 1, { value: (tokensAmount + 1) * tokenPrice }))
+        let moreThanTotalAmount = tokensAmount + 2
+        let price = tokenPrice * moreThanTotalAmount
+
+        await expect(nftTokenSale.purchaseTokens(owner.address, firstTokenId, tokenPrice, moreThanTotalAmount, { value: price }))
             .to.be.revertedWith("Can not buy more than available")
     })
 
     it('should facilitate purchasing tokens', async function () {
-        await expect(nftTokenSale.connect(addr1).purchaseTokens(owner.address, firstTokenId, (tokensAmount - 5), { value: (tokensAmount - 5) * tokenPrice }))
+        let purchaseAmount = tokensAmount - 5
+        let purchasePrice = tokenPrice * purchaseAmount
+
+        await expect(nftTokenSale.connect(addr1).purchaseTokens(owner.address, firstTokenId, tokenPrice, purchaseAmount, { value: purchasePrice }))
             .to.emit(nftTokenSale, 'SoldNFT')
-            .withArgs(owner.address, addr1.address, firstTokenId, tokensAmount - 5)
+            .withArgs(owner.address, addr1.address, firstTokenId, purchaseAmount, purchasePrice)
     })
 
     it('should return balance of address', async function () {
         expect(await nftTokenSale.getThisAddressTokenBalance(owner.address, firstTokenId)).to.equal(10)
-    })
-
-    it('Throw error if trying to change price and not owner', async function () {
-        await expect(nftTokenSale.connect(addr1).setCurrentPrice((tokenPrice * 2))).
-            to.be.revertedWith("Ownable: caller is not the owner")
     })
 
     it('Should throw error if price being set is equal to zero', async function () {
@@ -59,21 +60,14 @@ describe("NftTokenSale.contract", function () {
             to.be.revertedWith("Current price must be greater than zero")
     })
 
-    it('Should throw error if payee is not the owner', async function () {
-        await expect(nftTokenSale.connect(addr1).withdrawTo(addr1.address, tokenPrice)).
-            to.be.revertedWith("Ownable: caller is not the owner")
-    })
-
     it('Should throw error trying to withdraw zero', async function () {
-        await expect(nftTokenSale.withdrawTo(addr1.address, 0))
+        await expect(nftTokenSale.withdrawTo({ value: 0 }))
             .to.be.revertedWith("Not able to withdraw zero")
     })
 
-    // FIX ME!!!
     it('Should be able to withdraw to owner', async function () {
-        await nftTokenSale.transfer(1000);
 
-        await expect(nftTokenSale.withdrawTo(owner.address, 100, {from: owner.address}))
+        await expect(nftTokenSale.withdrawTo({ value: 100 }))
             .to.emit(nftTokenSale, 'Withdrawal')
             .withArgs(owner.address, 100)
     })
