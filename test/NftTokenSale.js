@@ -4,23 +4,36 @@ describe("NftTokenSale.contract", function () {
 
     let soundVerseERC1155;
     let nftTokenSale;
+    let tokenContract;
     let owner;
     let addr1;
+    let addr2;
+    let addr3;
     const firstTokenId = 845;
     let tokenPrice = 1000000000000; // in wei, about 0,000001 ether
     let tokensAmount = 10;
     let uri = 'https://token.com';
     const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
+    const tokenAmountTier1 = ethers.BigNumber.from('1100000');
+    const tokenAmountTier2 = ethers.BigNumber.from('650000');
+    const tokenAmountTier3 = ethers.BigNumber.from('350000');
+
     beforeEach(async function () {
         SoundVerseERC1155Factory = await ethers.getContractFactory('SoundVerseERC1155')
         soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(uri)
 
+        SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
+        tokenContract = await SoundVerseTokenFactory.deploy();
+
         NftTokenSaleFactory = await ethers.getContractFactory("NftTokenSale");
-        [owner, addr1] = await ethers.getSigners();
-        nftTokenSale = await NftTokenSaleFactory.deploy(soundVerseERC1155.address);
+        [owner, addr1, addr2, addr3] = await ethers.getSigners();
+        nftTokenSale = await NftTokenSaleFactory.deploy(soundVerseERC1155.address, tokenContract.address);
 
         expect(await soundVerseERC1155.mint(owner.address, firstTokenId, tokensAmount, '0x', { from: owner.address }));
+        expect(await tokenContract.transfer(addr1.address, tokenAmountTier1));
+        expect(await tokenContract.transfer(addr2.address, tokenAmountTier2));
+        expect(await tokenContract.transfer(addr3.address, tokenAmountTier3));
     })
 
     it('should initialize correctly', async function () {
@@ -44,7 +57,7 @@ describe("NftTokenSale.contract", function () {
 
     it('should facilitate purchasing tokens', async function () {
         let purchaseAmount = tokensAmount - 5
-        let purchasePrice = tokenPrice * purchaseAmount
+        let purchasePrice = 5000000000000 + 150000000000
 
         await expect(nftTokenSale.connect(addr1).purchaseTokens(owner.address, firstTokenId, tokenPrice, purchaseAmount, { value: purchasePrice }))
             .to.emit(nftTokenSale, 'SoldNFT')
@@ -55,21 +68,31 @@ describe("NftTokenSale.contract", function () {
         expect(await nftTokenSale.getThisAddressTokenBalance(owner.address, firstTokenId)).to.equal(10)
     })
 
-    it('Should throw error if price being set is equal to zero', async function () {
-        await expect(nftTokenSale.setCurrentPrice(0)).
-            to.be.revertedWith("Current price must be greater than zero")
+    it('Should get correct service fees tier from user', async function () {
+        // Tier 1 service Fees *10
+        expect(await nftTokenSale.currentFeesTierFromUser(addr1.address)).to.equal(3)
+        // Tier 2 service Fees *10
+        expect(await nftTokenSale.currentFeesTierFromUser(addr2.address)).to.equal(4)
+        // Tier 3 service Fees *10
+        expect(await nftTokenSale.currentFeesTierFromUser(addr3.address)).to.equal(5)
+
     })
 
-    it('Should throw error trying to withdraw zero', async function () {
-        await expect(nftTokenSale.withdrawTo({ value: 0 }))
-            .to.be.revertedWith("Not able to withdraw zero")
-    })
+    it('Should extract fees and transfer', async function () {
+        const tierOneUserFees = await nftTokenSale.currentFeesTierFromUser(addr1.address)
+        const parsedDecimalElevated = ethers.utils.parseUnits(tierOneUserFees.toString(), 17)
+        const formattedDecimal = ethers.utils.formatEther(parsedDecimalElevated)
 
-    it('Should be able to withdraw to owner', async function () {
-
-        await expect(nftTokenSale.withdrawTo({ value: 100 }))
+        await expect(nftTokenSale.extractFeesAndTransfer(100, parsedDecimalElevated, { value: parsedDecimalElevated }))
             .to.emit(nftTokenSale, 'Withdrawal')
-            .withArgs(owner.address, 100)
+            .withArgs(owner.address, formattedDecimal)
     })
+
+    // it('Should be able to withdraw to owner', async function () {
+
+    //     await expect(nftTokenSale.withdrawTo({ value: 100 }))
+    //         .to.emit(nftTokenSale, 'Withdrawal')
+    //         .withArgs(owner.address, 100)
+    // })
 
 });

@@ -9,7 +9,7 @@ async function main() {
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
   const Vesting = await hre.ethers.getContractFactory('Vesting')
 
-  const token = await SoundVerseToken.deploy(900000000);
+  const token = await SoundVerseToken.deploy();
   await token.deployed();
   
   console.log("SoundVerseToken deployed to:", token.address);
@@ -44,7 +44,7 @@ async function main() {
   console.log("Deploying the ERC1155 SALE contract")
 
   const NftTokenSale = await hre.ethers.getContractFactory("NftTokenSale");
-  const nftTokenSale = await NftTokenSale.deploy(nft1155.address);
+  const nftTokenSale = await NftTokenSale.deploy(nft1155.address, token.address);
   await nftTokenSale.deployed();
   console.log("NftTokenSale deployed to:", nftTokenSale.address);
   
