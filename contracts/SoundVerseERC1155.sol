@@ -17,7 +17,7 @@ contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable,
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, and `PAUSER_ROLE` to the account that
      * deploys the contract.
      */
-    constructor(string memory uri) ERC1155(uri) {
+    constructor() ERC1155("") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         _setupRole(MINTER_ROLE, _msgSender());
@@ -37,10 +37,14 @@ contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable,
         address to,
         uint256 id,
         uint256 amount,
+        string memory _uri,
         bytes memory data
     ) public virtual {
         _setupRole(MINTER_ROLE, msg.sender);
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC1155PresetMinterPauser: must have minter role to mint");
+
+        require(bytes(_uri).length != 0, "Token URI must not be empty");
+        _setURI(_uri);
 
         _mint(to, id, amount, data);
     }
@@ -52,10 +56,14 @@ contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable,
         address to,
         uint256[] memory ids,
         uint256[] memory amounts,
+        string memory _uri,
         bytes memory data
     ) public virtual {
         _setupRole(MINTER_ROLE, msg.sender);
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC1155PresetMinterPauser: must have minter role to mint");
+
+        require(bytes(_uri).length != 0, "Token URI must not be empty");
+        _setURI(_uri);
 
         _mintBatch(to, ids, amounts, data);
     }
