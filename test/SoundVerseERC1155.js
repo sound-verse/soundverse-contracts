@@ -22,7 +22,7 @@ describe('SoundVerseERC1155.contract', function () {
     beforeEach(async function () {
         SoundVerseERC1155Factory = await ethers.getContractFactory("SoundVerseERC1155");
         [deployer, other] = await ethers.getSigners();
-        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy();
+        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(uri);
     });
 
     it('deployer has the default admin role', async function () {
@@ -47,7 +47,7 @@ describe('SoundVerseERC1155.contract', function () {
 
     describe('minting', function () {
         it('deployer can mint tokens', async function () {
-            const receipt = await soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, uri, '0x', { from: deployer.address });
+            const receipt = await soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: deployer.address });
             await expect(receipt)
                 .to.emit(soundVerseERC1155, 'TransferSingle')
                 .withArgs(deployer.address, ZERO_ADDRESS, other.address, firstTokenId, firstTokenIdAmount)
@@ -56,7 +56,7 @@ describe('SoundVerseERC1155.contract', function () {
         });
 
         it('other accounts can also mint tokens', async function () {
-            const receipt = await soundVerseERC1155.connect(other).mint(other.address, firstTokenId, firstTokenIdAmount, uri, '0x', { from: other.address });
+            const receipt = await soundVerseERC1155.connect(other).mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: other.address });
             await expect(receipt)
                 .to.emit(soundVerseERC1155, 'TransferSingle')
                 .withArgs(other.address, ZERO_ADDRESS, other.address, firstTokenId, firstTokenIdAmount)
@@ -68,7 +68,7 @@ describe('SoundVerseERC1155.contract', function () {
     describe('batched minting', function () {
         it('deployer can batch mint tokens', async function () {
             const receipt = await soundVerseERC1155.mintBatch(
-                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], uri, '0x', { from: deployer.address },
+                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], '0x', { from: deployer.address },
             );
 
             await expect(receipt)
@@ -80,7 +80,7 @@ describe('SoundVerseERC1155.contract', function () {
 
         it('other accounts can also batch mint tokens', async function () {
             const receipt = await soundVerseERC1155.connect(other).mintBatch(
-                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], uri, '0x', { from: other.address },
+                other.address, [firstTokenId, secondTokenId], [firstTokenIdAmount, secondTokenIdAmount], '0x', { from: other.address },
             );
 
             await expect(receipt)
@@ -116,7 +116,7 @@ describe('SoundVerseERC1155.contract', function () {
         it('cannot mint while paused', async function () {
             await soundVerseERC1155.pause({ from: deployer.address });
 
-            await expect(soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, uri, '0x', { from: deployer.address })
+            await expect(soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: deployer.address })
             ).to.be.revertedWith("ERC1155Pausable: token transfer while paused");
         });
 
@@ -133,7 +133,7 @@ describe('SoundVerseERC1155.contract', function () {
 
     describe('burning', function () {
         it('holders can burn their tokens', async function () {
-            await soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, uri, '0x', { from: deployer.address });
+            await soundVerseERC1155.mint(other.address, firstTokenId, firstTokenIdAmount, '0x', { from: deployer.address });
 
             const receipt = await soundVerseERC1155.connect(other).burn(other.address, firstTokenId, 4999, { from: other.address });
             expect(receipt)
