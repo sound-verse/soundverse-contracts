@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable, ERC1155Pausable {
+contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable, ERC1155Pausable, Ownable {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
