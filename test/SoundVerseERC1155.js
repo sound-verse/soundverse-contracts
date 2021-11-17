@@ -17,7 +17,7 @@ describe('SoundVerseERC1155.contract', function () {
     const MINTER_ROLE = ethers.utils.solidityKeccak256(['string'], ['MINTER_ROLE']);
     const PAUSER_ROLE = ethers.utils.solidityKeccak256(['string'], ['PAUSER_ROLE']);
 
-    const uri = 'https://gateway.pinata.cloud/ipfs/{id}';
+    const uri = 'https://gateway.pinata.cloud/ipfs/123.json';
 
     beforeEach(async function () {
         SoundVerseERC1155Factory = await ethers.getContractFactory("SoundVerseERC1155");

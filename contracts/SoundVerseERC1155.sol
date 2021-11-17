@@ -23,7 +23,7 @@ contract SoundVerseERC1155 is Context, AccessControlEnumerable, ERC1155Burnable,
 
         _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
-    }
+    }                                                                                                                                                                                                                                                                                                                                                                                                                                              
 
     /**
      * @dev Creates `amount` new tokens for `to`, of token type `id`.
