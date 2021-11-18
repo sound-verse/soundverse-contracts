@@ -2,7 +2,6 @@ const hre = require("hardhat");
 const fs = require('fs');
 
 async function main() {
-  // const date = new Date().getTime + 20 * 60 * 1000
 
   console.log("Deploying ERC20 SoundVerse Token contract")
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
