@@ -15,7 +15,6 @@ describe('SoundVerseERC1155.contract', function () {
     const data = '0x';
 
     const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
-    const MINTER_ROLE = ethers.utils.solidityKeccak256(['string'], ['MINTER_ROLE']);
     const PAUSER_ROLE = ethers.utils.solidityKeccak256(['string'], ['PAUSER_ROLE']);
 
     const uri = 'https://gateway.pinata.cloud/ipfs/{id}.json';
@@ -34,18 +33,12 @@ describe('SoundVerseERC1155.contract', function () {
             expect(await soundVerseERC1155.getRoleMember(DEFAULT_ADMIN_ROLE, 0)).to.equal(deployer.address);
         });
 
-        it('deployer has the minter role', async function () {
-            expect(await soundVerseERC1155.getRoleMemberCount(MINTER_ROLE)).to.equal(1);
-            expect(await soundVerseERC1155.getRoleMember(MINTER_ROLE, 0)).to.equal(deployer.address);
-        });
-
         it('deployer has the pauser role', async function () {
             expect(await soundVerseERC1155.getRoleMemberCount(PAUSER_ROLE)).to.equal(1);
             expect(await soundVerseERC1155.getRoleMember(PAUSER_ROLE, 0)).to.equal(deployer.address);
         });
 
         it('minter and pauser role admin is the default admin', async function () {
-            expect(await soundVerseERC1155.getRoleAdmin(MINTER_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
             expect(await soundVerseERC1155.getRoleAdmin(PAUSER_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
         });
 

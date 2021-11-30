@@ -16,7 +16,6 @@ contract SoundVerseERC1155 is
     ERC1155Pausable,
     Ownable
 {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     uint256 public constant MAX_SUPPLY = 500;
@@ -24,13 +23,11 @@ contract SoundVerseERC1155 is
     mapping(uint256 => string) private _uris;
 
     /**
-     * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, and `PAUSER_ROLE` to the account that
+     * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
      * deploys the contract.
      */
     constructor() ERC1155("") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-
-        _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
     }
 
@@ -58,7 +55,6 @@ contract SoundVerseERC1155 is
      *
      * Requirements:
      *
-     * - the caller must have the `MINTER_ROLE`.
      */
     function mint(
         address to,
@@ -67,12 +63,6 @@ contract SoundVerseERC1155 is
         uint256 amount,
         bytes memory data
     ) public virtual {
-        _setupRole(MINTER_ROLE, msg.sender);
-
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "Must have minter role to mint"
-        );
         require(bytes(_mintUri).length != 0, "URI can not be empty");
         require(amount <= MAX_SUPPLY, "Max supply exceeded");
 
@@ -91,12 +81,6 @@ contract SoundVerseERC1155 is
         uint256[] memory amounts,
         bytes memory data
     ) public virtual {
-        _setupRole(MINTER_ROLE, msg.sender);
-
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "Must have minter role to mint"
-        );
         require(ids.length == _batchMintUris.length, "Ids and URIs length mismatch");
         for (uint256 i = 0; i < ids.length; i++) {
             require(
