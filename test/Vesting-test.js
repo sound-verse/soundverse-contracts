@@ -24,10 +24,13 @@ describe('Vest.contract', function () {
 
     soundVerseToken = await SoundVerseTokenFactory.deploy(1000000000)
 
+    const PercentageUtils = await ethers.getContractFactory("PercentageUtils");
+    utils = await PercentageUtils.deploy();
+
     VestingFactory = await ethers.getContractFactory('Vesting')
     ;[owner2, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
 
-    vesting = await VestingFactory.deploy(soundVerseToken.address, [
+    vesting = await VestingFactory.deploy(soundVerseToken.address, utils.address, [
       1000000,
       1000000,
       1000000,

@@ -9,9 +9,12 @@ async function main() {
   await token.deployed();
   console.log("SoundVerseToken deployed to:", token.address);
 
+  const PercentageUtils = await hre.ethers.getContractFactory("PercentageUtils");
+  const utils = await PercentageUtils.deploy().deployed();
+
   console.log('Deploying SoundVerse vesting contract');
   const Vesting = await hre.ethers.getContractFactory('Vesting');
-  const vest = await Vesting.deploy(token.address, [
+  const vest = await Vesting.deploy(token.address, utils.address, [
     1000000,
     1000000,
     1000000,
