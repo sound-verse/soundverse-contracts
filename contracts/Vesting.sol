@@ -5,14 +5,16 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../contracts/PercentageUtils.sol";
 
-contract Vesting is Ownable {
+contract Vesting is Ownable, PercentageUtils {
     using SafeMath for uint256;
     uint256 internal periodLength = 90 days;
     uint256 public totalPercentages;
     uint256[6] public cumulativeAmountToVest;
     bool public paused;
     IERC20 internal token;
+    PercentageUtils internal percentageUtils;
 
     struct Recipient {
         uint256 withdrawnAmount;
@@ -25,28 +27,13 @@ contract Vesting is Ownable {
     event LogRecipientAdded(address recipient, uint256 withdrawPercentage);
     event LogTokensClaimed(address recipient, uint256 amount);
 
-    /*
-     * Note: Percentages will be provided in thousands to represent 3 digits after the decimal point.
-     * Ex. 10% = 10000
-     */
-    modifier onlyValidPercentages(uint256 _percentage) {
-        require(
-            _percentage <= 100000,
-            "Provided percentage should be less than 100%"
-        );
-        require(
-            _percentage > 0,
-            "Provided percentage should be greater than 0"
-        );
-        _;
-    }
-
     /**
      * @param _tokenAddress The address of the SVJ token
      * @param _cumulativeAmountToVest  The total amount of tokens that will be distributed to investors
      */
     constructor(
         address _tokenAddress,
+        address _percentageUtilsAddress,
         uint256[6] memory _cumulativeAmountToVest
     ) {
         require(
@@ -54,6 +41,7 @@ contract Vesting is Ownable {
             "token address can not be zero address"
         );
         token = IERC20(_tokenAddress);
+        percentageUtils = PercentageUtils(_percentageUtilsAddress);
         cumulativeAmountToVest = _cumulativeAmountToVest;
         paused = false;
     }
@@ -173,7 +161,7 @@ contract Vesting is Ownable {
         if (period >= cumulativeAmountToVest.length) {
             period = cumulativeAmountToVest.length.sub(1);
         }
-        uint256 calculatedAmount = percentageCalculatorDiv(
+        uint256 calculatedAmount = percentageUtils.percentageCalculatorDiv(
             cumulativeAmountToVest[period],
             recipients[msg.sender].withdrawPercentage
         );
@@ -191,18 +179,5 @@ contract Vesting is Ownable {
      */
     function getRecipient(address _recipient) public view returns (uint256) {
         return recipients[_recipient].withdrawPercentage;
-    }
-
-    function percentageCalculatorDiv(uint256 _amount, uint256 _percentage)
-        public
-        pure
-        returns (uint256)
-    {
-        /*
-	Note: Percentages will be provided in thousands to represent 3 digits after the decimal point.
-	The division is made by 100000 
-	*/
-
-        return _amount.mul(_percentage).div(100000);
     }
 }
