@@ -2,6 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "hardhat/console.sol";
+import "./NftTokenSale.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
@@ -20,15 +21,19 @@ contract SoundVerseERC1155 is
 
     uint256 public constant MAX_SUPPLY = 500;
 
+    address public nftTokenSaleAddress;
+
     mapping(uint256 => string) private _uris;
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
      * deploys the contract.
      */
-    constructor() ERC1155("") {
+    constructor(address _nftTokenSaleAddress) ERC1155("") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
+
+        nftTokenSaleAddress = _nftTokenSaleAddress;
     }
 
     /**
@@ -68,6 +73,8 @@ contract SoundVerseERC1155 is
 
         setTokenUri(id, _mintUri);
 
+        setApprovalForAll(nftTokenSaleAddress, true);
+
         _mint(to, id, amount, data);
     }
 
@@ -93,6 +100,8 @@ contract SoundVerseERC1155 is
         for (uint256 i = 0; i < ids.length; i++) {
             setTokenUri(ids[i], _batchMintUris[i]);
         }
+
+        setApprovalForAll(nftTokenSaleAddress, true);
 
         _mintBatch(to, ids, amounts, data);
     }

@@ -7,15 +7,17 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
+import "../contracts/PercentageUtils.sol";
 
-contract NftTokenSale is Ownable, ReentrancyGuard {
+contract NftTokenSale is Ownable, ReentrancyGuard, PercentageUtils {
+    using SafeMath for uint256;
     address payable internal admin;
-    SoundVerseERC1155 public nftContract;
     SoundVerseToken public tokenContract;
+    PercentageUtils internal percentageUtils;
 
-    uint256 public constant SERVICE_FEES_TIER_1 = 3;
-    uint256 public constant SERVICE_FEES_TIER_2 = 4;
-    uint256 public constant SERVICE_FEES_TIER_3 = 5;
+    uint256 public constant SERVICE_FEES_TIER_1 = 3000;
+    uint256 public constant SERVICE_FEES_TIER_2 = 4000;
+    uint256 public constant SERVICE_FEES_TIER_3 = 5000;
 
     mapping(address => uint256) public userFees;
 
@@ -29,63 +31,68 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
 
     event Withdrawal(address _payee, uint256 _amount);
 
-    constructor(SoundVerseERC1155 _nftContract, SoundVerseToken _tokenContract)
-    {
+    constructor(
+        SoundVerseToken _tokenContract,
+        address _percentageUtilsAddress
+    ) {
         //Assign admin
         admin = payable(owner());
-        //NFT contract
-        nftContract = _nftContract;
         //Token contract
         tokenContract = _tokenContract;
+        //Utils contract
+        percentageUtils = PercentageUtils(_percentageUtilsAddress);
+        
     }
 
     function purchaseTokens(
         address _from,
         uint256 _tokenId,
         uint256 _tokenPrice,
-        uint256 _amountOfTokens
+        uint256 _amountOfTokens,
+        address _nftContractAddress
     ) public payable nonReentrant {
         //Require tokenPrice to be greater than zero
         require(_tokenPrice > 0, "Price must be greater than zero");
 
-        uint256 purchasePrice = msg.value;
-
-        // Calculate fees and requires to pay services fees on top
-        uint256 purchaseFeesFromUser = currentFeesTierFromUser(_from);
-        uint256 calculatedFees = calculateFees(purchasePrice, purchaseFeesFromUser);
-
-        console.log("purchase price: ", purchasePrice);
-        console.log("calculated fees: ", calculatedFees);
-
-        require(
-            purchasePrice ==
-                SafeMath.mul(_tokenPrice, _amountOfTokens) +
-                    calculatedFees,
-            "Not the correct price amount or service fees not paid"
-        );
+        //Total amount to pay with service fees
+        uint256 purchasePriceWithServiceFee = msg.value;
+        //Amount to pay without service fees
+        uint256 netPurchasePrice = _tokenPrice.mul(_amountOfTokens);
 
         //Requires that the contract has enough tokens
         require(
-            getThisAddressTokenBalance(_from, _tokenId) >= _amountOfTokens,
+            getThisAddressTokenBalance(_from, _tokenId, _nftContractAddress) >= _amountOfTokens,
             "Can not buy more than available"
         );
 
-        extractFeesAndTransfer(purchasePrice, purchaseFeesFromUser);
-
-        uint256 netPurchasePrice = calculateAmountToTransfer(
-            purchasePrice,
+        // Calculate fees and requires to pay services fees on top
+        uint256 purchaseFeesFromUser = currentFeesTierFromUser(_from);
+        uint256 calculatedFees = PercentageUtils.percentageCalculatorDiv(
+            netPurchasePrice,
             purchaseFeesFromUser
         );
 
-        nftContract.safeTransferFrom(
+        require(
+            purchasePriceWithServiceFee ==
+                calculateAmountToPay(
+                    _tokenPrice,
+                    _amountOfTokens,
+                    calculatedFees
+                ),
+            "Not the correct price amount or service fees not paid"
+        );
+
+        extractFeesAndTransfer(purchasePriceWithServiceFee, purchaseFeesFromUser);
+
+        //NFT transfer
+        IERC1155(_nftContractAddress).safeTransferFrom(
             _from,
             _msgSender(),
             _tokenId,
-            netPurchasePrice,
+            _amountOfTokens,
             _msgData()
         );
 
-        //Trigger sell event
         emit SoldNFT(
             _from,
             _msgSender(),
@@ -96,12 +103,12 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
     }
 
     //Returns this addresses balance
-    function getThisAddressTokenBalance(address _from, uint256 _tokenId)
+    function getThisAddressTokenBalance(address _from, uint256 _tokenId, address _nftContractAddress)
         public
         view
         returns (uint256)
     {
-        return nftContract.balanceOf(_from, _tokenId);
+        return IERC1155(_nftContractAddress).balanceOf(_from, _tokenId);
     }
 
     // Calculate service fee tier
@@ -125,36 +132,19 @@ contract NftTokenSale is Ownable, ReentrancyGuard {
         uint256 _orderAmount,
         uint256 _feesPercentage
     ) public payable {
-        uint256 fees = calculateFees(_orderAmount, _feesPercentage);
+        uint256 fees = PercentageUtils.percentageCalculatorDiv(
+            _orderAmount,
+            _feesPercentage
+        );
         admin.transfer(msg.value);
         emit Withdrawal(admin, fees);
     }
 
-    function calculateFees(uint256 _orderAmount, uint256 _feesTier)
-        public
-        pure
-        returns (uint256)
-    {
-        uint256 feesPercentage;
-        ( , feesPercentage) = SafeMath.tryDiv(_feesTier, 10);
-
-        uint256 fees = SafeMath.mul(_orderAmount, feesPercentage);
-        
-        return fees;
-    }
-
-    function calculateAmountToTransfer(
-        uint256 _orderAmount,
-        uint256 _feesTier
-    ) public pure returns (uint256) {
-        uint256 feesPercentage;
-        ( , feesPercentage) = SafeMath.tryDiv(_feesTier, 10);
-        
-        uint256 fees = SafeMath.mul(
-            _orderAmount,
-            feesPercentage
-        );
-
-        return SafeMath.sub(_orderAmount, fees);
+    function calculateAmountToPay(
+        uint256 _tokenPrice,
+        uint256 _amountOfTokens,
+        uint256 _fees
+    ) internal pure returns (uint256) {
+        return _tokenPrice.mul(_amountOfTokens).add(_fees);
     }
 }

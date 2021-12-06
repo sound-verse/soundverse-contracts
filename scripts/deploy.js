@@ -5,8 +5,7 @@ async function main() {
 
   console.log("Deploying ERC20 SoundVerse Token contract")
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
-  const token = await SoundVerseToken.deploy(900000000);
-  await token.deployed();
+  const token = await SoundVerseToken.deploy(900000000).deployed();
   console.log("SoundVerseToken deployed to:", token.address);
 
   const PercentageUtils = await hre.ethers.getContractFactory("PercentageUtils");
@@ -25,16 +24,14 @@ async function main() {
   await vest.deployed();
   console.log('SoundVerse vesting contract deployed to:', vest.ddress);
 
-  // console.log("Deploying ERC721 SoundVerse NFT contract")
-  // const SoundVerseERC721 = await hre.ethers.getContractFactory("SoundVerseERC721");
-  // const nft721 = await SoundVerseERC721.deploy();
-  // await nft721.deployed();
-  // console.log("SoundVerseERC721 deployed to:", nft721.address);
+  console.log("Deploying NFT Market contract")
+  const NftTokenSale = await hre.ethers.getContractFactory("NftTokenSale");
+  const marketContract = await NftTokenSale.deploy(token, utils.address).deployed();
+  console.log("NFT Market contract deployed to:", marketContract.address);
 
   console.log("Deploying ERC1155 SoundVerse NFT contract");
   const SoundVerseERC1155 = await hre.ethers.getContractFactory("SoundVerseERC1155");
-  const nft1155 = await SoundVerseERC1155.deploy();
-  await nft1155.deployed();
+  const nft1155 = await SoundVerseERC1155.deploy(marketContract.address).deployed();
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
 
 }
