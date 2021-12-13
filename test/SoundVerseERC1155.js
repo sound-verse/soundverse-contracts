@@ -21,9 +21,19 @@ describe('SoundVerseERC1155.contract', function () {
     const changedUri = 'https://gateway.pinata.cloud/ipfs/changedUri/{id}.json';
 
     beforeEach(async function () {
+        SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
+        tokenContract = await SoundVerseTokenFactory.deploy();
+
+        PercentageUtils = await ethers.getContractFactory("PercentageUtils");
+        utils = await PercentageUtils.deploy();
+        
+        NftTokenSaleFactory = await ethers.getContractFactory("NftTokenSale");
+        [deployer, other] = await ethers.getSigners();
+        nftTokenSale = await NftTokenSaleFactory.deploy(tokenContract.address, utils.address);
+
         SoundVerseERC1155Factory = await ethers.getContractFactory("SoundVerseERC1155");
         [deployer, other] = await ethers.getSigners();
-        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy();
+        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(nftTokenSale.address);
     });
 
     describe('Initialization', function () {

@@ -22,8 +22,8 @@ contract SoundVerseToken is IERC20 {
     address public contractOwner;
 
     //Constructor
-    constructor(uint256 total) {
-        totalSupply_ = total;
+    constructor() {
+        totalSupply_ = 900000000;
         balances[msg.sender] = totalSupply_;
         contractOwner = msg.sender;
     }

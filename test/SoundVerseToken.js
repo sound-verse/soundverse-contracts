@@ -13,7 +13,7 @@ describe("Token.contract", function () {
         SoundVerseToken = await ethers.getContractFactory("SoundVerseToken");
         [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     
-        soundVerseToken = await SoundVerseToken.deploy(6000000000);
+        soundVerseToken = await SoundVerseToken.deploy();
     });
 
     it('should set the right owner', async function() {
@@ -35,9 +35,9 @@ describe("Token.contract", function () {
         await expect(soundVerseToken.connect(addr1).transfer(addr2.address, 9999999999999))
         .to.be.revertedWith("Not enough balance");
         
-        await soundVerseToken.transfer(addr1.address, 1000000000);
+        await soundVerseToken.transfer(addr1.address, 10000000);
         const addr1Balance = await soundVerseToken.balanceOf(addr1.address);
-        expect(addr1Balance).to.equal(1000000000);
+        expect(addr1Balance).to.equal(10000000);
 
     });
 
