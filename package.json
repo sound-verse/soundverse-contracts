@@ -26,6 +26,21 @@
     "solhint": "^1.0.10",
     "solidity-coverage": "^0.6.7"
   },
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "console": "npx hardhat console",
+    "node": "npx hardhat node",
+    "test": "npx hardhat test",
+    "dev": "npx hardhat compile && npx hardhat node && npx hardhat run scripts/deploy.js --network localhost",
+    "fuji": "npx hardhat compile && npx hardhat node && npx hardhat run scripts/deploy.js --network fuji",
+    "matic": "npx hardhat compile && npx hardhat node && npx hardhat run scripts/deploy.js --network matic",
+    "send-avax-wallet-signer": "npx hardhat run scripts/sendAvaxWalletSigner.ts",
+    "send-avax-json-provider": "npx hardhat run scripts/sendAvaxJSONProvider.ts",
+    "lint": "prettier ./test/**/*.ts --check",
+    "hardhat": "npx hardhat",
+    "accounts": "npx hardhat accounts",
+    "balances": "npx hardhat balances"
+  },
   "dependencies": {
     "@openzeppelin/test-helpers": "^0.5.15",
     "axios": "^0.22.0",
