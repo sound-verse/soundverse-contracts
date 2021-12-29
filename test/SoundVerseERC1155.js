@@ -27,13 +27,13 @@ describe('SoundVerseERC1155.contract', function () {
         PercentageUtils = await ethers.getContractFactory("PercentageUtils");
         utils = await PercentageUtils.deploy();
         
-        NftTokenSaleFactory = await ethers.getContractFactory("NftTokenSale");
+        MarketContractFactory = await ethers.getContractFactory("MarketContract");
         [deployer, other] = await ethers.getSigners();
-        nftTokenSale = await NftTokenSaleFactory.deploy(tokenContract.address, utils.address);
+        marketContract = await MarketContractFactory.deploy(tokenContract.address, utils.address);
 
         SoundVerseERC1155Factory = await ethers.getContractFactory("SoundVerseERC1155");
         [deployer, other] = await ethers.getSigners();
-        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(nftTokenSale.address);
+        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(marketContract.address);
     });
 
     describe('Initialization', function () {

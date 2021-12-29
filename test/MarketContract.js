@@ -1,9 +1,9 @@
 const { expect } = require("chai");
 
-describe("NftTokenSale.contract", function () {
+describe("MarketCOntract.contract", function () {
 
     let soundVerseERC1155;
-    let nftTokenSale;
+    let marketContract;
     let tokenContract;
     let owner;
     let addr1;
@@ -27,12 +27,12 @@ describe("NftTokenSale.contract", function () {
         PercentageUtils = await ethers.getContractFactory("PercentageUtils");
         utils = await PercentageUtils.deploy();
 
-        NftTokenSaleFactory = await ethers.getContractFactory("NftTokenSale");
+        MarketContractFactory = await ethers.getContractFactory("MarketContract");
         [owner, addr1, addr2, addr3] = await ethers.getSigners();
-        nftTokenSale = await NftTokenSaleFactory.deploy(tokenContract.address, utils.address);
+        marketContract = await MarketContractFactory.deploy(tokenContract.address, utils.address);
 
         SoundVerseERC1155Factory = await ethers.getContractFactory('SoundVerseERC1155')
-        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(nftTokenSale.address)
+        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(marketContract.address)
 
         expect(await soundVerseERC1155.mint(owner.address, firstTokenId, uri, tokensAmount, '0x', { from: owner.address }));
         expect(await tokenContract.transfer(addr1.address, tokenAmountTier1));
@@ -43,14 +43,14 @@ describe("NftTokenSale.contract", function () {
 
         //should throw error if not buying for the correct amount
         let price = (tokenPrice * 5) + 1
-        await expect(nftTokenSale.purchaseTokens(owner.address, firstTokenId, price, tokensAmount, nftContractAddress, { value: price }))
+        await expect(marketContract.purchaseTokens(owner.address, firstTokenId, price, tokensAmount, nftContractAddress, { value: price }))
             .to.be.revertedWith("Not the correct price amount")
 
         //should throw error if buying more than total amount
         let moreThanTotalAmount = tokensAmount + 2
         price = tokenPrice * moreThanTotalAmount
 
-        await expect(nftTokenSale.purchaseTokens(owner.address, firstTokenId, tokenPrice, moreThanTotalAmount, nftContractAddress, { value: price }))
+        await expect(marketContract.purchaseTokens(owner.address, firstTokenId, tokenPrice, moreThanTotalAmount, nftContractAddress, { value: price }))
             .to.be.revertedWith("Can not buy more than available")
 
 
@@ -58,28 +58,28 @@ describe("NftTokenSale.contract", function () {
         let netPurchasePrice = tokenPrice * purchaseAmount
         let purchasePrice = netPurchasePrice + 150000000000
 
-        await expect(nftTokenSale.connect(addr1).purchaseTokens(owner.address, firstTokenId, tokenPrice, purchaseAmount, nftContractAddress, { value: purchasePrice }))
-            .to.emit(nftTokenSale, 'SoldNFT')
+        await expect(marketContract.connect(addr1).purchaseTokens(owner.address, firstTokenId, tokenPrice, purchaseAmount, nftContractAddress, { value: purchasePrice }))
+            .to.emit(marketContract, 'SoldNFT')
             .withArgs(owner.address, addr1.address, firstTokenId, purchaseAmount, netPurchasePrice)
 
         //should return balance of address
-        expect(await nftTokenSale.getThisAddressTokenBalance(owner.address, firstTokenId, nftContractAddress)).to.equal(5)
+        expect(await marketContract.getThisAddressTokenBalance(owner.address, firstTokenId, nftContractAddress)).to.equal(5)
 
         //Should get correct service fees tier from user
         // Tier 1 service Fees *1000
-        expect(await nftTokenSale.currentFeesTierFromUser(addr1.address)).to.equal(3000)
+        expect(await marketContract.currentFeesTierFromUser(addr1.address)).to.equal(3000)
         // Tier 2 service Fees *1000
-        expect(await nftTokenSale.currentFeesTierFromUser(addr2.address)).to.equal(4000)
+        expect(await marketContract.currentFeesTierFromUser(addr2.address)).to.equal(4000)
         // Tier 3 service Fees *1000
-        expect(await nftTokenSale.currentFeesTierFromUser(addr3.address)).to.equal(5000)
+        expect(await marketContract.currentFeesTierFromUser(addr3.address)).to.equal(5000)
 
         //Should extract fees and transfer
-        const tierOneUserFees = await nftTokenSale.currentFeesTierFromUser(addr1.address)
+        const tierOneUserFees = await marketContract.currentFeesTierFromUser(addr1.address)
         purchaseAmount = 5
         netPurchasePrice = tokenPrice * purchaseAmount
 
-        await expect(nftTokenSale.extractFeesAndTransfer(netPurchasePrice, tierOneUserFees))
-            .to.emit(nftTokenSale, 'Withdrawal')
+        await expect(marketContract.extractFeesAndTransfer(netPurchasePrice, tierOneUserFees))
+            .to.emit(marketContract, 'Withdrawal')
             .withArgs(owner.address, 150000000000)
 
     })

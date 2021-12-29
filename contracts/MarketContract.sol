@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+import "./SoundVerseERC721.sol";
 import "./SoundVerseERC1155.sol";
 import "./SoundVerseToken.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -9,7 +10,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 import "../contracts/PercentageUtils.sol";
 
-contract NftTokenSale is Ownable, ReentrancyGuard, PercentageUtils {
+contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
     using SafeMath for uint256;
     address payable internal admin;
     SoundVerseToken public tokenContract;
