@@ -6,14 +6,21 @@ describe('NFT contract', function () {
     let soundVerseERC721;
     let tokenURIOne = "test-tokenuri.com/test1";
     let tokenURITwo = "test-tokenuri.com/test2"
-    let owner;
-    let addr1;
 
     beforeEach(async function () {
+        SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
+        tokenContract = await SoundVerseTokenFactory.deploy();
+
+        PercentageUtils = await ethers.getContractFactory("PercentageUtils");
+        utils = await PercentageUtils.deploy();
+
+        MarketContractFactory = await ethers.getContractFactory("MarketContract");
+        [owner, addr1] = await ethers.getSigners();
+        marketContract = await MarketContractFactory.deploy(tokenContract.address, utils.address);
+
         SoundVerseERC721 = await ethers.getContractFactory("SoundVerseERC721");
         [owner, addr1] = await ethers.getSigners();
-
-        soundVerseERC721 = await SoundVerseERC721.deploy();
+        soundVerseERC721 = await SoundVerseERC721.deploy(marketContract.address);
     });
 
     it('creates 2 unpublished items and returns the tokenId', async function () {
