@@ -13,6 +13,7 @@ contract SoundVerseERC721 is ERC721URIStorage, Ownable {
 
     //Constants and variables
     Counters.Counter private _tokenIdTracker;
+    address public marketplaceAddress;
     uint256 public itemPrice;
     uint256 public fee;
     mapping (string => bool) public allowedDomains;
@@ -20,7 +21,9 @@ contract SoundVerseERC721 is ERC721URIStorage, Ownable {
     //Events
     event NewMintEvent(uint256 indexed id);
 
-    constructor() ERC721("SoundVerse", "SVMT") {}
+    constructor(address _marketplaceAddress) ERC721("SoundVerse", "SVMT") {
+        marketplaceAddress = _marketplaceAddress;
+    }
 
     // Minting functions
     function createUnpublishedItem(string memory tokenURI) public payable {
@@ -30,11 +33,12 @@ contract SoundVerseERC721 is ERC721URIStorage, Ownable {
 
         uint256 currentTokenId = _tokenIdTracker.current();
 
-        _mintItem(unpublishedOwner, currentTokenId);
+        mintItem(unpublishedOwner, currentTokenId);
         _setTokenURI(currentTokenId, tokenURI);
+        setApprovalForAll(marketplaceAddress, true);
     }
 
-    function _mintItem(address _to, uint256 _tokenId) private {
+    function mintItem(address _to, uint256 _tokenId) private {
         _tokenIdTracker.increment();
         _safeMint(_to, _tokenId);
 

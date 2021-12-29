@@ -27,8 +27,8 @@ async function main() {
   console.log('SoundVerse vesting contract deployed to:', vest.address);
 
   console.log("Deploying NFT Market contract")
-  const NftTokenSale = await hre.ethers.getContractFactory("NftTokenSale");
-  const marketContract = await NftTokenSale.deploy(token.address, utils.address);
+  const MarketContract = await hre.ethers.getContractFactory("MarketContract");
+  const marketContract = await MarketContract.deploy(token.address, utils.address);
   await marketContract.deployed();
   console.log("NFT Market contract deployed to:", marketContract.address);
 
