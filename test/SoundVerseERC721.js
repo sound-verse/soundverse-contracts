@@ -6,8 +6,6 @@ describe('NFT contract', function () {
     let soundVerseERC721;
     let tokenURIOne = "test-tokenuri.com/test1";
     let tokenURITwo = "test-tokenuri.com/test2"
-    let owner;
-    let addr1;
 
     beforeEach(async function () {
         SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
