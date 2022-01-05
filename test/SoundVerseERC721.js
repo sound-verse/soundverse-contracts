@@ -3,7 +3,6 @@ const { expect } = require("chai");
 describe('NFT contract', function () {
 
     let SoundVerseERC721;
-    let soundVerseERC721;
     let tokenURIOne = "test-tokenuri.com/test1";
     let tokenURITwo = "test-tokenuri.com/test2"
 
@@ -28,11 +27,11 @@ describe('NFT contract', function () {
         await soundVerseERC721.addAllowedURI(tokenURIOne)
         await soundVerseERC721.addAllowedURI(tokenURITwo)
 
-        await expect(soundVerseERC721.createUnpublishedItem(tokenURIOne))
+        await expect(soundVerseERC721.createMasterItem(tokenURIOne))
             .to.emit(soundVerseERC721, 'NewMintEvent')
             .withArgs(0);
 
-        await expect(soundVerseERC721.createUnpublishedItem(tokenURITwo))
+        await expect(soundVerseERC721.createMasterItem(tokenURITwo))
             .to.emit(soundVerseERC721, 'NewMintEvent')
             .withArgs(1);
 
@@ -42,7 +41,7 @@ describe('NFT contract', function () {
 
         await soundVerseERC721.addAllowedURI(tokenURIOne)
 
-        await expect(soundVerseERC721.createUnpublishedItem("badURI"))
+        await expect(soundVerseERC721.createMasterItem("badURI"))
             .to.be.revertedWith("TokenURI must be allowed");
 
     });

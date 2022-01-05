@@ -21,12 +21,12 @@ contract SoundVerseERC721 is ERC721URIStorage, Ownable {
     //Events
     event NewMintEvent(uint256 indexed id);
 
-    constructor(address _marketplaceAddress) ERC721("SoundVerse", "SVMT") {
+    constructor(address _marketplaceAddress) ERC721("SoundVerseOriginal", "SVO") {
         marketplaceAddress = _marketplaceAddress;
     }
 
     // Minting functions
-    function createUnpublishedItem(string memory tokenURI) public payable {
+    function createMasterItem(string memory tokenURI) public payable {
         require( allowedDomains[tokenURI], "TokenURI must be allowed");
 
         address unpublishedOwner = _msgSender();
