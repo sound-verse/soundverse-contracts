@@ -107,7 +107,7 @@ contract SoundVerseERC1155 is
     }
 
     /**
-     * @dev Pauses all token transfers.
+     * @dev Pause 
      *
      * See {ERC1155Pausable} and {Pausable-_pause}.
      *

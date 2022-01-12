@@ -42,6 +42,7 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
         address payable seller;
         address payable owner;
         uint256 price;
+        uint256 amount;
         bool sold;
     }
 
@@ -54,6 +55,7 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
         address seller,
         address owner,
         uint256 price,
+        uint256 amount,
         bool sold
     );
 
@@ -90,6 +92,7 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
             payable(_msgSender()),
             payable(address(0)),
             _tokenPrice,
+            _amountOfTokens,
             false
         );
 
@@ -118,6 +121,7 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
             _msgSender(),
             address(0),
             _tokenPrice,
+            _amountOfTokens,
             false
         );
     }
@@ -190,8 +194,8 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
         payable(admin).transfer(listingPrice);
     }
 
-    // Returns all unsold market items
-    function fetchMarketItems() public view returns (MarketItem[] memory) {
+    // Returns all unsold listed items
+    function fetchListedItems() public view returns (MarketItem[] memory) {
         uint256 itemCount = _itemIds.current();
         uint256 unsoldItemCount = _itemIds.current() - _itemsSold.current();
         uint256 currentIndex = 0;
@@ -206,63 +210,6 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
             }
         }
         return items;
-    }
-
-    // Returns only items that a user has purchased
-    function fetchMyNFTs() public view returns (MarketItem[] memory) {
-        uint256 totalItemCount = _itemIds.current();
-        uint256 itemCount = 0;
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idToMarketItem[i + 1].owner == _msgSender()) {
-                itemCount += 1;
-            }
-        }
-
-        MarketItem[] memory items = new MarketItem[](itemCount);
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idToMarketItem[i + 1].owner == _msgSender()) {
-                uint256 currentId = i + 1;
-                MarketItem storage currentItem = idToMarketItem[currentId];
-                items[currentIndex] = currentItem;
-                currentIndex += 1;
-            }
-        }
-        return items;
-    }
-
-    // Returns only items a user has created
-    function fetchItemsCreated() public view returns (MarketItem[] memory) {
-        uint256 totalItemCount = _itemIds.current();
-        uint256 itemCount = 0;
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idToMarketItem[i + 1].seller == _msgSender()) {
-                itemCount += 1;
-            }
-        }
-
-        MarketItem[] memory items = new MarketItem[](itemCount);
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idToMarketItem[i + 1].seller == _msgSender()) {
-                uint256 currentId = i + 1;
-                MarketItem storage currentItem = idToMarketItem[currentId];
-                items[currentIndex] = currentItem;
-                currentIndex += 1;
-            }
-        }
-        return items;
-    }
-
-    // Returns this addresses balance
-    function getThisAddressTokenBalance(
-        address _from,
-        uint256 _tokenId,
-        address _nftContractAddress
-    ) public view returns (uint256) {
-        return IERC1155(_nftContractAddress).balanceOf(_from, _tokenId);
     }
 
     // Calculate service fee tier
