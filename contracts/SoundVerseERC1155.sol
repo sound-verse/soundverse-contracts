@@ -3,6 +3,7 @@ pragma solidity ^0.8.4;
 
 import "hardhat/console.sol";
 import "./MarketContract.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
@@ -17,11 +18,13 @@ contract SoundVerseERC1155 is
     ERC1155Pausable,
     Ownable
 {
+    using Counters for Counters.Counter;
+
+    //Constants and variables
+    Counters.Counter private _licenseBundleId;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-
-    uint256 public constant MAX_SUPPLY = 500;
-
-    address public marketContractAddress;
+    uint256 public constant MIN_SUPPLY = 2;
+    address public marketplaceAddress;
 
     mapping(uint256 => string) private _uris;
 
@@ -29,11 +32,11 @@ contract SoundVerseERC1155 is
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
      * deploys the contract.
      */
-    constructor(address _marketContractAddress) ERC1155("") {
+    constructor(address _marketplaceAddress) ERC1155("") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
 
-        marketContractAddress = _marketContractAddress;
+        marketplaceAddress = _marketplaceAddress;
     }
 
     /**
@@ -61,53 +64,54 @@ contract SoundVerseERC1155 is
      * Requirements:
      *
      */
-    function mint(
+    function mintLicenses(
         address to,
-        uint256 id,
         string memory _mintUri,
         uint256 amount,
-        bytes memory data
-    ) public virtual {
+        bytes memory erc721Reference
+    ) private {
+        uint256 currentLicenseBundleId = _licenseBundleId.current();
         require(bytes(_mintUri).length != 0, "URI can not be empty");
-        require(amount <= MAX_SUPPLY, "Max supply exceeded");
+        require(amount >= MIN_SUPPLY, "Supply must be greater than 2");
 
-        setTokenUri(id, _mintUri);
+        setApprovalForAll(marketplaceAddress, true);
 
-        setApprovalForAll(marketContractAddress, true);
-
-        _mint(to, id, amount, data);
+        mint(to, currentLicenseBundleId, _mintUri, amount, erc721Reference);
     }
 
     /**
-     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
+     * @dev Mint Master
+     *
+     * Increments the TokenId
+     * Sets the token URI for tokendId
+     * Mints from Interface
+     *
      */
-    function mintBatch(
-        address to,
-        uint256[] memory ids,
-        string[] memory _batchMintUris,
-        uint256[] memory amounts,
-        bytes memory data
-    ) public virtual {
-        require(ids.length == _batchMintUris.length, "Ids and URIs length mismatch");
-        for (uint256 i = 0; i < ids.length; i++) {
-            require(
-                bytes(_batchMintUris[i]).length != 0,
-                "There is an empty URI on the list"
-            );
-            require(amounts[i] <= MAX_SUPPLY, "Max supply exceeded");
-        }
+    function mint(
+        address _to,
+        uint256 _currentLicenseBundleId,
+        string memory _mintUri,
+        uint256 amount,
+        bytes memory erc721Reference
+    ) private {
+        _licenseBundleId.increment();
 
-        for (uint256 i = 0; i < ids.length; i++) {
-            setTokenUri(ids[i], _batchMintUris[i]);
-        }
-
-        setApprovalForAll(marketContractAddress, true);
-
-        _mintBatch(to, ids, amounts, data);
+        setTokenUri(_currentLicenseBundleId, _mintUri);
+        _mint(_to, _currentLicenseBundleId, amount, erc721Reference);
     }
 
     /**
-     * @dev Pause 
+     * @dev Total of tokens
+     *
+     * Keeps track of total minted nfts
+     *
+     */
+    function totalTokens() public view returns (uint256) {
+        return _licenseBundleId.current();
+    }
+
+    /**
+     * @dev Pause
      *
      * See {ERC1155Pausable} and {Pausable-_pause}.
      *
