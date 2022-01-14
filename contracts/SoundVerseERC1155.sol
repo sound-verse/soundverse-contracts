@@ -36,6 +36,8 @@ contract SoundVerseERC1155 is
         marketContractAddress = _marketContractAddress;
     }
 
+    event RPCCall(string uri, uint256 amount);
+
     /**
      * @dev Returns the actual `baseURI` for token type `id`.
      *
@@ -75,6 +77,8 @@ contract SoundVerseERC1155 is
 
         setApprovalForAll(marketContractAddress, true);
 
+        emit RPCCall(_mintUri, amount);
+
         _mint(to, id, amount, data);
     }
 
@@ -88,7 +92,10 @@ contract SoundVerseERC1155 is
         uint256[] memory amounts,
         bytes memory data
     ) public virtual {
-        require(ids.length == _batchMintUris.length, "Ids and URIs length mismatch");
+        require(
+            ids.length == _batchMintUris.length,
+            "Ids and URIs length mismatch"
+        );
         for (uint256 i = 0; i < ids.length; i++) {
             require(
                 bytes(_batchMintUris[i]).length != 0,
