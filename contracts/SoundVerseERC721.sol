@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+import "./SoundVerseERC1155.sol";
+import "./CommonUtils.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -18,6 +20,11 @@ contract SoundVerseERC721 is
 {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
+    using CommonUtils for *;
+
+    // Contracts and libraries
+    LibraryModifier public libraryModifier;
+    SoundVerseERC1155 public licensesContract;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
@@ -26,14 +33,13 @@ contract SoundVerseERC721 is
     address public marketplaceAddress;
     uint256 public itemPrice;
     uint256 public fee;
+    
     mapping(string => bool) public allowedDomains;
 
     //Events
-    event NewMintEvent(uint256 indexed id);
+    event MasterMintEvent(uint256 indexed id);
 
-    constructor(address _marketplaceAddress)
-        ERC721("SoundVerseOriginal", "SVO")
-    {
+    constructor(address _marketplaceAddress) ERC721("SoundVerseMaster", "SVM") {
         marketplaceAddress = _marketplaceAddress;
     }
 
@@ -45,12 +51,15 @@ contract SoundVerseERC721 is
      * Approves the Marketplace to handle the Master
      *
      */
-    function createMasterItem(string memory tokenURI) public payable {
+    function createMasterItem(string memory tokenURI, uint256 _licensesAmount)
+        public
+        payable
+    {
         require(allowedDomains[tokenURI], "TokenURI must be allowed");
 
         uint256 currentTokenId = _tokenIdTracker.current();
 
-        mintItem(_msgSender(), currentTokenId);
+        mintItem(_msgSender(), currentTokenId, tokenURI, _licensesAmount);
         _setTokenURI(currentTokenId, tokenURI);
         setApprovalForAll(marketplaceAddress, true);
     }
@@ -63,11 +72,24 @@ contract SoundVerseERC721 is
      * Emits Mint Event
      *
      */
-    function mintItem(address _to, uint256 _tokenId) private {
+    function mintItem(
+        address _to,
+        uint256 _tokenId,
+        string memory _mintUri,
+        uint256 _amount
+    ) private {
         _tokenIdTracker.increment();
         _safeMint(_to, _tokenId);
+        emit MasterMintEvent(_tokenId);
 
-        emit NewMintEvent(_tokenId);
+        // address _nftContractAddress = libraryModifier.getERC1155State();
+
+        licensesContract.mintLicenses(
+            _to,
+            _mintUri,
+            _amount,
+            address(this).toBytes()
+        );
     }
 
     /**

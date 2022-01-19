@@ -44,6 +44,12 @@ async function main() {
   await nft1155.deployed();
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
 
+  console.log("Deploying CommonUtils and AddressModifier");
+  const CommonUtils = await hre.ethers.getLibraryFactory("CommonUtils");
+  const commonUtils = await CommonUtils.deploy(nf,marketContract.address);
+  await commonUtils.deployed();
+  console.log("AddressUtikls deployed to:",nft721.address, nft1155.address, commonUtils.address);
+
 }
 
 main()

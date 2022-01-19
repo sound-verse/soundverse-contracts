@@ -69,7 +69,7 @@ contract SoundVerseERC1155 is
         string memory _mintUri,
         uint256 amount,
         bytes memory erc721Reference
-    ) private {
+    ) external {
         uint256 currentLicenseBundleId = _licenseBundleId.current();
         require(bytes(_mintUri).length != 0, "URI can not be empty");
         require(amount >= MIN_SUPPLY, "Supply must be greater than 2");
