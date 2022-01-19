@@ -33,60 +33,57 @@ contract SoundVerseERC721 is
     address public marketplaceAddress;
     uint256 public itemPrice;
     uint256 public fee;
-    
-    mapping(string => bool) public allowedDomains;
 
     //Events
     event MasterMintEvent(uint256 indexed id);
 
+     /**
+     * @dev Constructor of Master NFT
+     * @param _marketplaceAddress address of the marketplace contract
+     */
     constructor(address _marketplaceAddress) ERC721("SoundVerseMaster", "SVM") {
         marketplaceAddress = _marketplaceAddress;
     }
 
     /**
-     * @dev Mint Master
+     * @dev Main minting function
      *
-     * Function to create Master NFT
-     * Sets tokenURI
-     * Approves the Marketplace to handle the Master
+     * Function to called by the BE to trigger Master and License minting
+     * @param tokenURI URI of the song to be minted
+     * @param _licensesAmount amount of licenses to mint linked to the Master NFT
+     * Finally approves the Marketplace to handle the Master
      *
      */
     function createMasterItem(string memory tokenURI, uint256 _licensesAmount)
         public
-        payable
     {
-        require(allowedDomains[tokenURI], "TokenURI must be allowed");
-
-        uint256 currentTokenId = _tokenIdTracker.current();
-
-        mintItem(_msgSender(), currentTokenId, tokenURI, _licensesAmount);
-        _setTokenURI(currentTokenId, tokenURI);
+        mintItem(_msgSender(), tokenURI, _licensesAmount);
         setApprovalForAll(marketplaceAddress, true);
     }
 
     /**
-     * @dev Mint Master
+     * @dev Mint function that mints Master NFT and linked licenses
      *
-     * Increments the TokenId
-     * Mints from Interface
-     * Emits Mint Event
+     * @param _to address of creator
+     * @param _mintURI URI of the song to be minted
+     * @param _amount amount of licenses to mint linked to the Master NFT
      *
      */
     function mintItem(
         address _to,
-        uint256 _tokenId,
-        string memory _mintUri,
+        string memory _mintURI,
         uint256 _amount
     ) private {
+        uint256 currentTokenId = _tokenIdTracker.current();
         _tokenIdTracker.increment();
-        _safeMint(_to, _tokenId);
-        emit MasterMintEvent(_tokenId);
 
-        // address _nftContractAddress = libraryModifier.getERC1155State();
+        _safeMint(_to, currentTokenId);
+        _setTokenURI(currentTokenId, _mintURI);
+        emit MasterMintEvent(currentTokenId);
 
         licensesContract.mintLicenses(
             _to,
-            _mintUri,
+            _mintURI,
             _amount,
             address(this).toBytes()
         );
@@ -94,41 +91,24 @@ contract SoundVerseERC721 is
 
     /**
      * @dev Burn tokens
-     *
-     * lets the owner of the contract burn tokens
-     * Needs tokenId
+     * @param tokenId ID of the token to be burned
      */
     function burnUnpublishedItem(uint256 tokenId) public onlyOwner {
         _burn(tokenId);
     }
 
     /**
-     * @dev Total of tokens
-     *
-     * Keeps track of total minted nfts
-     *
+     * @dev Keeps track of total minted nfts
+     * @return current number of minted tokens
      */
     function totalTokens() public view returns (uint256) {
         return _tokenIdTracker.current();
     }
 
     /**
-     * @dev Allowed URIs
-     *
-     * Adds allowed URIs to the mapping
-     * Must be contract owner to use it.
-     */
-    function addAllowedURI(string memory _allowedURI) public onlyOwner {
-        allowedDomains[_allowedURI] = true;
-    }
-
-    /**
      * @dev Pause
-     *
      * See {ERC1155Pausable} and {Pausable-_pause}.
-     *
      * Requirements:
-     *
      * - the caller must have the `PAUSER_ROLE`.
      */
     function pause() public virtual {
@@ -141,11 +121,8 @@ contract SoundVerseERC721 is
 
     /**
      * @dev Unpauses all token transfers.
-     *
      * See {ERC1155Pausable} and {Pausable-_unpause}.
-     *
      * Requirements:
-     *
      * - the caller must have the `PAUSER_ROLE`.
      */
     function unpause() public virtual {

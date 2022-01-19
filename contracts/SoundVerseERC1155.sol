@@ -31,6 +31,7 @@ contract SoundVerseERC1155 is
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
      * deploys the contract.
+     * @param _marketplaceAddress Address of the marketplace
      */
     constructor(address _marketplaceAddress) ERC1155("") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
@@ -41,7 +42,8 @@ contract SoundVerseERC1155 is
 
     /**
      * @dev Returns the actual `baseURI` for token type `id`.
-     *
+     * @param tokenId token ID to retrieve the uri from
+     * @return URI from token ID
      */
     function uri(uint256 tokenId) public view override returns (string memory) {
         return (_uris[tokenId]);
@@ -49,7 +51,8 @@ contract SoundVerseERC1155 is
 
     /**
      * @dev Sets token URI for token type `id`.
-     *
+     * @param tokenId token ID receiving the uri
+     * @param _uri URI to set to token ID
      */
     function setTokenUri(uint256 tokenId, string memory _uri) internal {
         require(bytes(_uris[tokenId]).length == 0, "Cannot set uri twice");
@@ -60,51 +63,52 @@ contract SoundVerseERC1155 is
      * @dev Creates `amount` new tokens for `to`, of token type `id`.
      *
      * See {ERC1155-_mint}.
-     *
-     * Requirements:
-     *
+     * @param _to address of the receiver
+     * @param _mintURI URI of the song
+     * @param _amount amount of licenses to be created
+     * @param _erc721Reference reference of the Master NFT
      */
     function mintLicenses(
-        address to,
-        string memory _mintUri,
-        uint256 amount,
-        bytes memory erc721Reference
+        address _to,
+        string memory _mintURI,
+        uint256 _amount,
+        bytes memory _erc721Reference
     ) external {
         uint256 currentLicenseBundleId = _licenseBundleId.current();
-        require(bytes(_mintUri).length != 0, "URI can not be empty");
-        require(amount >= MIN_SUPPLY, "Supply must be greater than 2");
+        require(bytes(_mintURI).length != 0, "URI can not be empty");
+        require(_amount >= MIN_SUPPLY, "Supply must be greater than 2");
 
         setApprovalForAll(marketplaceAddress, true);
 
-        mint(to, currentLicenseBundleId, _mintUri, amount, erc721Reference);
+        mint(_to, currentLicenseBundleId, _mintURI, _amount, _erc721Reference);
     }
 
     /**
      * @dev Mint Master
      *
-     * Increments the TokenId
-     * Sets the token URI for tokendId
-     * Mints from Interface
+     * @param _to address of the receiver
+     * @param _currentLicenseBundleId ID of the Master NFT
+     * @param _mintURI URI of the song
+     * @param _amount amount of licenses to be created
+     * @param _erc721Reference reference of the Master NFT
      *
      */
     function mint(
         address _to,
         uint256 _currentLicenseBundleId,
-        string memory _mintUri,
-        uint256 amount,
-        bytes memory erc721Reference
+        string memory _mintURI,
+        uint256 _amount,
+        bytes memory _erc721Reference
     ) private {
         _licenseBundleId.increment();
 
-        setTokenUri(_currentLicenseBundleId, _mintUri);
-        _mint(_to, _currentLicenseBundleId, amount, erc721Reference);
+        setTokenUri(_currentLicenseBundleId, _mintURI);
+        _mint(_to, _currentLicenseBundleId, _amount, _erc721Reference);
     }
 
     /**
-     * @dev Total of tokens
-     *
-     * Keeps track of total minted nfts
-     *
+     * @dev Keeps track of total minted nfts
+     * @return total of minted license bundles
      */
     function totalTokens() public view returns (uint256) {
         return _licenseBundleId.current();

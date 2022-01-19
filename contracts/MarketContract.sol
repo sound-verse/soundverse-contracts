@@ -96,6 +96,8 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
             false
         );
 
+        // address _nftContractAddress = libraryModifier.getERC1155State();
+
         if (_amountOfTokens == 1) {
             // ERC721 - Master
             IERC721(_nftContractAddress).transferFrom(
