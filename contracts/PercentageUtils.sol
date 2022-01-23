@@ -19,21 +19,3 @@ library PercentageUtils {
         return _amount.mul(_percentage).div(100000);
     }
 }
-
-abstract contract ValidPercentages {
-        /*
-     * Note: Percentages will be provided in thousands to represent 3 digits after the decimal point.
-     * Ex. 10% = 10000
-     */
-    modifier onlyValidPercentages(uint256 _percentage) {
-        require(
-            _percentage <= 100000,
-            "Provided percentage should be less than 100%"
-        );
-        require(
-            _percentage > 0,
-            "Provided percentage should be greater than 0"
-        );
-        _;
-    }
-}

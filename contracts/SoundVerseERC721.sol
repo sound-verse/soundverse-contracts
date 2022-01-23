@@ -2,6 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "./SoundVerseERC1155.sol";
+import "./CommonUtils.sol";
 import "./CommonUtilsModifier.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
@@ -36,7 +37,7 @@ contract SoundVerseERC721 is
     //Events
     event MasterMintEvent(uint256 indexed id);
 
-     /**
+    /**
      * @dev Constructor of Master NFT
      * @param _marketplaceAddress address of the marketplace contract
      */
@@ -84,7 +85,7 @@ contract SoundVerseERC721 is
             _to,
             _mintURI,
             _amount,
-            commonUtilsModifier.addressToBytes(address(this))
+            CommonUtils.toBytes(address(this))
         );
     }
 

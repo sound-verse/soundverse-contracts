@@ -4,12 +4,17 @@ const ethers = hre.ethers;
 
 async function main() {
 
-  console.log('Library deployment')
-  const constructorArgs = []    // Put constructor args (if any) here for your contract
-  let factory = await ethers.getContractFactory("PercentageUtils");
-  let percentageUtilsLib = await factory.deploy(...constructorArgs);
+  console.log('PercentageUtils Library deployment')
+  let percentageUtilsfactory = await ethers.getContractFactory("PercentageUtils");
+  let percentageUtilsLib = await percentageUtilsfactory.deploy();
   await percentageUtilsLib.deployed()
-  console.log('Library deployment successful to address', percentageUtilsLib.address)
+  console.log('PercentageUtils Library deployment successful to address', percentageUtilsLib.address)
+
+  console.log('CommonUtils Library deployment')
+  let commonUtilsfactory = await ethers.getContractFactory("CommonUtils");
+  let commonUtilsLib = await commonUtilsfactory.deploy();
+  await commonUtilsLib.deployed()
+  console.log('CommonUtils Library deployment successful to address', commonUtilsLib.address)
 
   console.log("Deploying ERC20 SoundVerse Token contract")
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
@@ -45,7 +50,11 @@ async function main() {
   console.log("NFT Market contract deployed to:", marketContract.address);
 
   console.log("Deploying ERC721 SoundVerse NFT contract");
-  const SoundVerseERC721 = await hre.ethers.getContractFactory("SoundVerseERC721");
+  const SoundVerseERC721 = await hre.ethers.getContractFactory("SoundVerseERC721", {
+    libraries: {
+      CommonUtils: commonUtilsLib.address,
+    },
+  });
   const nft721 = await SoundVerseERC721.deploy(marketContract.address);
   await nft721.deployed();
   console.log("SoundVerseERC721 deployed to:", nft721.address);
@@ -57,7 +66,11 @@ async function main() {
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
 
   console.log("Deploying CommonUtilsModifier");
-  const CommonUtilsModifier = await hre.ethers.getContractFactory("CommonUtilsModifier");
+  const CommonUtilsModifier = await hre.ethers.getContractFactory("CommonUtilsModifier", {
+    libraries: {
+      CommonUtils: commonUtilsLib.address,
+    },
+  });
   const commonUtilsModifier = await CommonUtilsModifier.deploy(nft721.address, nft1155.address, marketContract.address);
   await commonUtilsModifier.deployed();
   console.log("commonUtilsModifier deployed to:", nft721.address, nft1155.address, marketContract.address);
