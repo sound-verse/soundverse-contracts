@@ -2,7 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "./SoundVerseERC1155.sol";
-import "./CommonUtils.sol";
+import "./CommonUtilsModifier.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -20,10 +20,9 @@ contract SoundVerseERC721 is
 {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
-    using CommonUtils for *;
 
     // Contracts and libraries
-    LibraryModifier public libraryModifier;
+    CommonUtilsModifier public commonUtilsModifier;
     SoundVerseERC1155 public licensesContract;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -85,7 +84,7 @@ contract SoundVerseERC721 is
             _to,
             _mintURI,
             _amount,
-            address(this).toBytes()
+            commonUtilsModifier.addressToBytes(address(this))
         );
     }
 

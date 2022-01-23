@@ -44,13 +44,13 @@ library CommonUtils {
         return diamondStorage().marketplaceAddress;
     }
 
-    function toBytes(address a) public pure returns (bytes memory) {
+    function toBytes(address a) internal pure returns (bytes memory) {
         return abi.encodePacked(a);
     }
 }
 
 // This contract uses the library to set and retrieve state variables
-contract LibraryModifier {
+contract CommonUtilsModifier {
     address public erc721;
     address public erc1155;
     address public marketplace;
@@ -83,5 +83,9 @@ contract LibraryModifier {
         returns (address marketplaceAddress)
     {
         marketplaceAddress = CommonUtils.marketplaceAddress();
+    }
+
+    function addressToBytes(address a) external pure returns (bytes memory) {
+        return CommonUtils.toBytes(a);
     }
 }
