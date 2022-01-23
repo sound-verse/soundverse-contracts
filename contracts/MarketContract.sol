@@ -7,10 +7,9 @@ import "./SoundVerseToken.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-//import "hardhat/console.sol"; TODO("remove this")
 import "../contracts/PercentageUtils.sol";
 
-contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
+contract MarketContract is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
     Counters.Counter private _itemIds;
@@ -18,7 +17,6 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
 
     //Contracts
     SoundVerseToken public tokenContract;
-    PercentageUtils internal percentageUtils;
 
     address payable admin;
     uint256 listingPrice = 0.025 ether;
@@ -28,11 +26,10 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
     uint256 public constant SERVICE_FEES_TIER_2 = 4000;
     uint256 public constant SERVICE_FEES_TIER_3 = 5000;
 
-    constructor(SoundVerseToken _tokenContract, address _percentageUtilsAddress)
+    constructor(SoundVerseToken _tokenContract)
     {
         admin = payable(owner());
         tokenContract = _tokenContract;
-        percentageUtils = PercentageUtils(_percentageUtilsAddress);
     }
 
     struct MarketItem {

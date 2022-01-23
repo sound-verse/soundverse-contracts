@@ -24,12 +24,9 @@ describe("MarketCOntract.contract", function () {
         SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
         tokenContract = await SoundVerseTokenFactory.deploy();
 
-        PercentageUtils = await ethers.getContractFactory("PercentageUtils");
-        utils = await PercentageUtils.deploy();
-
         MarketContractFactory = await ethers.getContractFactory("MarketContract");
         [owner, addr1, addr2, addr3] = await ethers.getSigners();
-        marketContract = await MarketContractFactory.deploy(tokenContract.address, utils.address);
+        marketContract = await MarketContractFactory.deploy(tokenContract.address);
 
         SoundVerseERC1155Factory = await ethers.getContractFactory('SoundVerseERC1155')
         soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(marketContract.address)
