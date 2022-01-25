@@ -7,7 +7,7 @@ import "./SoundVerseToken.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "../contracts/PercentageUtils.sol";
+import "../contracts/libs/PercentageUtils.sol";
 
 contract MarketContract is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./CommonUtils.sol";
+import "./libs/CommonUtils.sol";
 
 // This contract uses the library to set and retrieve state variables
 contract CommonUtilsModifier {
