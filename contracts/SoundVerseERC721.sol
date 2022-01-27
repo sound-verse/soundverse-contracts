@@ -40,9 +40,8 @@ contract SoundVerseERC721 is
      * @dev Constructor of Master NFT
      * @param _marketplaceAddress address of the marketplace contract
      */
-    constructor(address _marketplaceAddress, address _commonUtils) ERC721("SoundVerseMaster", "SVM") {
+    constructor(address _marketplaceAddress) ERC721("SoundVerseMaster", "SVM") {
         marketplaceAddress = _marketplaceAddress;
-        CommonUtils(_commonUtils).setContractAddressFor("erc721", address(this));
     }
 
     /**

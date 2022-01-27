@@ -2,12 +2,8 @@
 pragma solidity ^0.8.4;
 
 contract CommonUtils {
-    struct AddressData {
-     address contractAddress;
-     bool exists;
-   }
 
-    mapping(string => AddressData) public addressBook;
+    mapping(string => address) public addressBook;
 
     constructor() {}
 
@@ -16,16 +12,14 @@ contract CommonUtils {
         view
         returns (address)
     {
-        return addressBook[_contractName].contractAddress;
+        return addressBook[_contractName];
     }
 
     function setContractAddressFor(
         string memory _contractName,
         address _contractAddress
     ) public {
-        require(addressBook[_contractName].exists == false, "The address for the contract exists.");
-        addressBook[_contractName].contractAddress = _contractAddress;
-        addressBook[_contractName].exists = true;
+        addressBook[_contractName] = _contractAddress;
     }
 
     function toBytes(address a) public pure returns (bytes memory) {
