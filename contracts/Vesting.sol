@@ -5,16 +5,31 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../contracts/PercentageUtils.sol";
+import "./libs/PercentageUtils.sol";
 
-contract Vesting is Ownable, PercentageUtils {
+contract Vesting is Ownable {
     using SafeMath for uint256;
     uint256 internal periodLength = 90 days;
     uint256 public totalPercentages;
     uint256[6] public cumulativeAmountToVest;
     bool public paused;
     IERC20 internal token;
-    PercentageUtils internal percentageUtils;
+
+    /*
+     * Note: Percentages will be provided in thousands to represent 3 digits after the decimal point.
+     * Ex. 10% = 10000
+     */
+    modifier onlyValidPercentages(uint256 _percentage) {
+        require(
+            _percentage <= 100000,
+            "Provided percentage should be less than 100%"
+        );
+        require(
+            _percentage > 0,
+            "Provided percentage should be greater than 0"
+        );
+        _;
+    }
 
     struct Recipient {
         uint256 withdrawnAmount;
@@ -33,7 +48,6 @@ contract Vesting is Ownable, PercentageUtils {
      */
     constructor(
         address _tokenAddress,
-        address _percentageUtilsAddress,
         uint256[6] memory _cumulativeAmountToVest
     ) {
         require(
@@ -41,7 +55,6 @@ contract Vesting is Ownable, PercentageUtils {
             "token address can not be zero address"
         );
         token = IERC20(_tokenAddress);
-        percentageUtils = PercentageUtils(_percentageUtilsAddress);
         cumulativeAmountToVest = _cumulativeAmountToVest;
         paused = false;
     }
@@ -161,7 +174,7 @@ contract Vesting is Ownable, PercentageUtils {
         if (period >= cumulativeAmountToVest.length) {
             period = cumulativeAmountToVest.length.sub(1);
         }
-        uint256 calculatedAmount = percentageUtils.percentageCalculatorDiv(
+        uint256 calculatedAmount = PercentageUtils.percentageCalculatorDiv(
             cumulativeAmountToVest[period],
             recipients[msg.sender].withdrawPercentage
         );

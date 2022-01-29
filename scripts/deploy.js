@@ -1,7 +1,15 @@
 const hre = require("hardhat");
 const fs = require('fs');
+const ethers = hre.ethers;
+const config = require('dotenv').config()
 
 async function main() {
+
+  console.log('PercentageUtils Library deployment')
+  let percentageUtilsfactory = await ethers.getContractFactory("PercentageUtils");
+  let percentageUtilsLib = await percentageUtilsfactory.deploy();
+  await percentageUtilsLib.deployed()
+  console.log('PercentageUtils Library deployment successful to address', percentageUtilsLib.address)
 
   console.log("Deploying ERC20 SoundVerse Token contract")
   const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
@@ -9,13 +17,13 @@ async function main() {
   await token.deployed();
   console.log("SoundVerseToken deployed to:", token.address);
 
-  const PercentageUtils = await hre.ethers.getContractFactory("PercentageUtils");
-  const utils = await PercentageUtils.deploy();
-  await utils.deployed();
-
   console.log('Deploying SoundVerse vesting contract');
-  const Vesting = await hre.ethers.getContractFactory('Vesting');
-  const vest = await Vesting.deploy(token.address, utils.address, [
+  const Vesting = await hre.ethers.getContractFactory('Vesting', {
+    libraries: {
+      PercentageUtils: percentageUtilsLib.address,
+    },
+  });
+  const vest = await Vesting.deploy(token.address, [
     1000000,
     1000000,
     1000000,
@@ -27,8 +35,12 @@ async function main() {
   console.log('SoundVerse vesting contract deployed to:', vest.address);
 
   console.log("Deploying NFT Market contract")
-  const MarketContract = await hre.ethers.getContractFactory("MarketContract");
-  const marketContract = await MarketContract.deploy(token.address, utils.address);
+  const MarketContract = await hre.ethers.getContractFactory("MarketContract", {
+    libraries: {
+      PercentageUtils: percentageUtilsLib.address,
+    },
+  });
+  const marketContract = await MarketContract.deploy(token.address);
   await marketContract.deployed();
   console.log("NFT Market contract deployed to:", marketContract.address);
 
@@ -43,6 +55,13 @@ async function main() {
   const nft1155 = await SoundVerseERC1155.deploy(marketContract.address);
   await nft1155.deployed();
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
+
+  const commonUtilsAddress = process.env.COMMONUTILS
+  const CommonUtils = await ethers.getContractFactory("CommonUtils");
+  const utils = await CommonUtils.attach(commonUtilsAddress);
+  await utils.setContractAddressFor("SoundVerseERC721", nft721.address);
+  await utils.setContractAddressFor("SoundVerseERC1155", nft1155.address);
+  await utils.setContractAddressFor("MarketContract", marketContract.address);
 
 }
 

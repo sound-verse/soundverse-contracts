@@ -7,67 +7,141 @@ import "./SoundVerseToken.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol";
-import "../contracts/PercentageUtils.sol";
+import "../contracts/libs/PercentageUtils.sol";
 
-contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
+contract MarketContract is Ownable, ReentrancyGuard {
+    using Counters for Counters.Counter;
     using SafeMath for uint256;
-    address payable internal admin;
-    SoundVerseToken public tokenContract;
-    PercentageUtils internal percentageUtils;
+    Counters.Counter private _itemIds;
+    Counters.Counter private _itemsSold;
 
+    //Contracts
+    SoundVerseToken public tokenContract;
+
+    address payable admin;
+    uint256 listingPrice = 0.025 ether;
+
+    // Service fee tiers
     uint256 public constant SERVICE_FEES_TIER_1 = 3000;
     uint256 public constant SERVICE_FEES_TIER_2 = 4000;
     uint256 public constant SERVICE_FEES_TIER_3 = 5000;
 
-    mapping(address => uint256) public userFees;
+    constructor(SoundVerseToken _tokenContract)
+    {
+        admin = payable(owner());
+        tokenContract = _tokenContract;
+    }
 
-    event SoldNFT(
-        address _seller,
-        address _buyer,
-        uint256 _tokenId,
-        uint256 _amount,
-        uint256 _purchasePrice
+    struct MarketItem {
+        uint256 itemId;
+        address nftContract;
+        uint256 tokenId;
+        address payable seller;
+        address payable owner;
+        uint256 price;
+        uint256 amount;
+        bool sold;
+    }
+
+    mapping(uint256 => MarketItem) private idToMarketItem;
+
+    event MarketItemCreated(
+        uint256 indexed itemId,
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address seller,
+        address owner,
+        uint256 price,
+        uint256 amount,
+        bool sold
     );
+
+    /* Returns the listing price of the contract */
+    function getListingPrice() public view returns (uint256) {
+        return listingPrice;
+    }
+
+    mapping(address => uint256) public userFees;
 
     event Withdrawal(address _payee, uint256 _amount);
 
-    constructor(
-        SoundVerseToken _tokenContract,
-        address _percentageUtilsAddress
-    ) {
-        //Assign admin
-        admin = payable(owner());
-        //Token contract
-        tokenContract = _tokenContract;
-        //Utils contract
-        percentageUtils = PercentageUtils(_percentageUtilsAddress);
-        
+    // This function places an item for sale on the marketplace
+    function createMarketItem(
+        address _nftContractAddress,
+        uint256 _tokenId,
+        uint256 _amountOfTokens,
+        uint256 _tokenPrice
+    ) public payable nonReentrant {
+        //Require tokenPrice to be greater than zero
+        require(_tokenPrice > 0.1 ether, "Price must be greater than 0.1");
+        require(
+            msg.value == listingPrice,
+            "Price must be equal to listing price"
+        );
+
+        _itemIds.increment();
+        uint256 itemId = _itemIds.current();
+
+        idToMarketItem[itemId] = MarketItem(
+            itemId,
+            _nftContractAddress,
+            _tokenId,
+            payable(_msgSender()),
+            payable(address(0)),
+            _tokenPrice,
+            _amountOfTokens,
+            false
+        );
+
+        // address _nftContractAddress = libraryModifier.getERC1155State();
+
+        if (_amountOfTokens == 1) {
+            // ERC721 - Master
+            IERC721(_nftContractAddress).transferFrom(
+                _msgSender(),
+                address(this),
+                _tokenId
+            );
+        } else {
+            //ERC1155 - Licenses
+            IERC1155(_nftContractAddress).safeTransferFrom(
+                _msgSender(),
+                address(this),
+                _tokenId,
+                _amountOfTokens,
+                _msgData()
+            );
+        }
+
+        emit MarketItemCreated(
+            itemId,
+            _nftContractAddress,
+            _tokenId,
+            _msgSender(),
+            address(0),
+            _tokenPrice,
+            _amountOfTokens,
+            false
+        );
     }
 
+    // Creates the sale of a marketplace item
+    // Transfers ownership of the item, as well as funds between parties
     function purchaseTokens(
-        address _from,
-        uint256 _tokenId,
-        uint256 _tokenPrice,
+        uint256 _itemId,
         uint256 _amountOfTokens,
         address _nftContractAddress
     ) public payable nonReentrant {
-        //Require tokenPrice to be greater than zero
-        require(_tokenPrice > 0, "Price must be greater than zero");
+        uint256 price = idToMarketItem[_itemId].price;
+        uint256 tokenId = idToMarketItem[_itemId].tokenId;
 
-        //Total amount to pay with service fees
+        // Total amount to pay with service fees
         uint256 purchasePriceWithServiceFee = msg.value;
-        //Amount to pay without service fees
-        uint256 netPurchasePrice = _tokenPrice.mul(_amountOfTokens);
-
-        //Requires that the contract has enough tokens
-        require(
-            getThisAddressTokenBalance(_from, _tokenId, _nftContractAddress) >= _amountOfTokens,
-            "Can not buy more than available"
-        );
+        // Amount to pay without service fees
+        uint256 netPurchasePrice = price.mul(_amountOfTokens);
 
         // Calculate fees and requires to pay services fees on top
-        uint256 purchaseFeesFromUser = currentFeesTierFromUser(_from);
+        uint256 purchaseFeesFromUser = currentFeesTierFromUser(_msgSender());
         uint256 calculatedFees = PercentageUtils.percentageCalculatorDiv(
             netPurchasePrice,
             purchaseFeesFromUser
@@ -75,41 +149,66 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
 
         require(
             purchasePriceWithServiceFee ==
-                calculateAmountToPay(
-                    _tokenPrice,
-                    _amountOfTokens,
-                    calculatedFees
-                ),
+                calculateAmountToPay(price, _amountOfTokens, calculatedFees),
             "Not the correct price amount or service fees not paid"
         );
 
-        extractFeesAndTransfer(purchasePriceWithServiceFee, purchaseFeesFromUser);
-
-        //NFT transfer
-        IERC1155(_nftContractAddress).safeTransferFrom(
-            _from,
-            _msgSender(),
-            _tokenId,
-            _amountOfTokens,
-            _msgData()
+        extractFeesAndTransfer(
+            purchasePriceWithServiceFee,
+            purchaseFeesFromUser
         );
 
-        emit SoldNFT(
-            _from,
-            _msgSender(),
-            _tokenId,
-            _amountOfTokens,
-            netPurchasePrice
+        require(
+            msg.value == price,
+            "Please submit the asking price in order to complete purchase"
         );
+
+        // Fund transfer to the seller
+        idToMarketItem[_itemId].seller.transfer(msg.value);
+
+        // NFT transfer to the buyer
+        if (_amountOfTokens == 1) {
+            //ERC-721 - Master
+            IERC721(_nftContractAddress).transferFrom(
+                address(this),
+                _msgSender(),
+                tokenId
+            );
+        } else {
+            //ERC1155 - Licenses
+            IERC1155(_nftContractAddress).safeTransferFrom(
+                address(this),
+                _msgSender(),
+                tokenId,
+                _amountOfTokens,
+                _msgData()
+            );
+        }
+
+        idToMarketItem[_itemId].owner = payable(_msgSender());
+        idToMarketItem[_itemId].sold = true;
+        _itemsSold.increment();
+
+        // ListingPrice transfer to Marketplace
+        payable(admin).transfer(listingPrice);
     }
 
-    //Returns this addresses balance
-    function getThisAddressTokenBalance(address _from, uint256 _tokenId, address _nftContractAddress)
-        public
-        view
-        returns (uint256)
-    {
-        return IERC1155(_nftContractAddress).balanceOf(_from, _tokenId);
+    // Returns all unsold listed items
+    function fetchListedItems() public view returns (MarketItem[] memory) {
+        uint256 itemCount = _itemIds.current();
+        uint256 unsoldItemCount = _itemIds.current() - _itemsSold.current();
+        uint256 currentIndex = 0;
+
+        MarketItem[] memory items = new MarketItem[](unsoldItemCount);
+        for (uint256 i = 0; i < itemCount; i++) {
+            if (idToMarketItem[i + 1].owner == address(0)) {
+                uint256 currentId = i + 1;
+                MarketItem storage currentItem = idToMarketItem[currentId];
+                items[currentIndex] = currentItem;
+                currentIndex += 1;
+            }
+        }
+        return items;
     }
 
     // Calculate service fee tier
@@ -128,7 +227,7 @@ contract MarketContract is Ownable, ReentrancyGuard, PercentageUtils {
         }
     }
 
-    //Service Fee extraction
+    // Service Fee extraction
     function extractFeesAndTransfer(
         uint256 _orderAmount,
         uint256 _feesPercentage
