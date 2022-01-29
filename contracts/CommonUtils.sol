@@ -25,4 +25,8 @@ contract CommonUtils {
     function toBytes(address a) public pure returns (bytes memory) {
         return abi.encodePacked(a);
     }
+
+    function compareStrings(string memory a, string memory b) public pure returns (bool) {
+    return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+}
 }
