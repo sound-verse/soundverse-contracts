@@ -1,7 +1,6 @@
 const hre = require("hardhat");
-const fs = require('fs');
 const ethers = hre.ethers;
-const config = require('dotenv').config()
+const config = require('../utils.config.json');
 
 async function main() {
 
@@ -56,7 +55,7 @@ async function main() {
   await nft1155.deployed();
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
 
-  const commonUtilsAddress = process.env.COMMONUTILS
+  const commonUtilsAddress = config.address;
   const CommonUtils = await ethers.getContractFactory("CommonUtils");
   const utils = await CommonUtils.attach(commonUtilsAddress);
   await utils.setContractAddressFor("SoundVerseERC721", nft721.address);
