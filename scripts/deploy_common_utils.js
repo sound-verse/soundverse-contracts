@@ -1,8 +1,12 @@
 const hre = require("hardhat");
 const fs = require('fs');
 const ethers = hre.ethers;
+const config = require("../utils.config.json");
+var path = require('path');
 
 async function main() {
+
+    const configFile = path.dirname(__dirname)
 
     console.log('CommonUtils deployment')
     const CommonUtils = await ethers.getContractFactory("CommonUtils");
@@ -10,8 +14,14 @@ async function main() {
     await commonUtils.deployed()
     console.log('CommonUtils deployment successful to address', commonUtils.address);
 
-    fs.appendFileSync('.env', 'COMMONUTILS=' + commonUtils.address);
+    config.address = commonUtils.address;
+    try {
+        fs.writeFileSync(`${configFile}/utils.config.json`, JSON.stringify(config));
+    } catch(error){
+        console.error(error);
+    }
 }
+
 
 main()
     .then(() => process.exit(0))
