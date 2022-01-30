@@ -4,7 +4,7 @@ settings.json
 .vscode
 package-lock.json
 package.json
-
+.env
 #Hardhat files
 cache
 artifacts
