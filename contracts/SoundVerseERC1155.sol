@@ -10,6 +10,15 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+interface ISoundVerseERC1155 {
+    function mintLicenses(
+        address _to,
+        string memory _mintURI,
+        uint256 _amount,
+        bytes memory _erc721Reference
+    ) external;
+}
+
 contract SoundVerseERC1155 is
     Context,
     AccessControlEnumerable,
@@ -23,20 +32,16 @@ contract SoundVerseERC1155 is
     Counters.Counter private _licenseBundleId;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant MIN_SUPPLY = 2;
-    address public marketplaceAddress;
 
     mapping(uint256 => string) private _uris;
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
      * deploys the contract.
-     * @param _marketplaceAddress Address of the marketplace
      */
-    constructor(address _marketplaceAddress) ERC1155("") {
+    constructor() ERC1155("") {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
-
-        marketplaceAddress = _marketplaceAddress;
     }
 
     /**
@@ -77,7 +82,7 @@ contract SoundVerseERC1155 is
         require(bytes(_mintURI).length != 0, "URI can not be empty");
         require(_amount >= MIN_SUPPLY, "Supply must be greater than 2");
 
-        setApprovalForAll(marketplaceAddress, true);
+        // setApprovalForAll(marketplaceAddress, true);
 
         mint(_to, currentLicenseBundleId, _mintURI, _amount, _erc721Reference);
     }

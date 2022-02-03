@@ -3,40 +3,13 @@ const ethers = hre.ethers;
 const config = require('../utils.config.json');
 
 async function main() {
-
-  console.log('PercentageUtils Library deployment')
-  let percentageUtilsfactory = await ethers.getContractFactory("PercentageUtils");
-  let percentageUtilsLib = await percentageUtilsfactory.deploy();
-  await percentageUtilsLib.deployed()
-  console.log('PercentageUtils Library deployment successful to address', percentageUtilsLib.address)
-
-  console.log("Deploying ERC20 SoundVerse Token contract")
-  const SoundVerseToken = await hre.ethers.getContractFactory("SoundVerseToken");
-  const token = await SoundVerseToken.deploy();
-  await token.deployed();
-  console.log("SoundVerseToken deployed to:", token.address);
-
-  console.log('Deploying SoundVerse vesting contract');
-  const Vesting = await hre.ethers.getContractFactory('Vesting', {
-    libraries: {
-      PercentageUtils: percentageUtilsLib.address,
-    },
-  });
-  const vest = await Vesting.deploy(token.address, [
-    1000000,
-    1000000,
-    1000000,
-    1000000,
-    1000000,
-    1000000,
-  ]);
-  await vest.deployed();
-  console.log('SoundVerse vesting contract deployed to:', vest.address);
+  const commonUtilsAddress = config.commopnUtils;
+  const percentageUtilsLibAddress = config.percentageUtilsLib;
 
   console.log("Deploying NFT Market contract")
-  const MarketContract = await hre.ethers.getContractFactory("MarketContract", {
+  const MarketContract = await ethers.getContractFactory("MarketContract", {
     libraries: {
-      PercentageUtils: percentageUtilsLib.address,
+      PercentageUtils: percentageUtilsLibAddress,
     },
   });
   const marketContract = await MarketContract.deploy(token.address);
@@ -44,18 +17,17 @@ async function main() {
   console.log("NFT Market contract deployed to:", marketContract.address);
 
   console.log("Deploying ERC721 SoundVerse NFT contract");
-  const SoundVerseERC721 = await hre.ethers.getContractFactory("SoundVerseERC721");
-  const nft721 = await SoundVerseERC721.deploy(marketContract.address);
+  const SoundVerseERC721 = await ethers.getContractFactory("SoundVerseERC721");
+  const nft721 = await SoundVerseERC721.deploy(commonUtilsAddress);
   await nft721.deployed();
   console.log("SoundVerseERC721 deployed to:", nft721.address);
 
   console.log("Deploying ERC1155 SoundVerse NFT contract");
-  const SoundVerseERC1155 = await hre.ethers.getContractFactory("SoundVerseERC1155");
-  const nft1155 = await SoundVerseERC1155.deploy(marketContract.address);
+  const SoundVerseERC1155 = await ethers.getContractFactory("SoundVerseERC1155");
+  const nft1155 = await SoundVerseERC1155.deploy();
   await nft1155.deployed();
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
 
-  const commonUtilsAddress = config.address;
   const CommonUtils = await ethers.getContractFactory("CommonUtils");
   const utils = await CommonUtils.attach(commonUtilsAddress);
   await utils.setContractAddressFor("SoundVerseERC721", nft721.address);

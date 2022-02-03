@@ -8,22 +8,20 @@ async function main() {
 
     const configFile = path.dirname(__dirname)
 
-    console.log('CommonUtils deployment')
-    const CommonUtils = await ethers.getContractFactory("CommonUtils");
-    let commonUtils = await CommonUtils.deploy();
-    await commonUtils.deployed()
-    console.log('CommonUtils deployment successful to address', commonUtils.address);
+    console.log('PercentageUtils Library deployment')
+    let percentageUtilsfactory = await ethers.getContractFactory("PercentageUtils");
+    let percentageUtilsLib = await percentageUtilsfactory.deploy();
+    await percentageUtilsLib.deployed()
+    console.log('PercentageUtils Library deployment successful to address', percentageUtilsLib.address);
 
-    config.commonUtils = commonUtils.address;
+    config.percentageUtilsLib = percentageUtilsLib.address;
     try {
         fs.writeFileSync(`${configFile}/utils.config.json`, JSON.stringify(config));
-    } catch(error){
+    } catch (error) {
         console.error(error);
     }
-}
 
-
-main()
+} main()
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);

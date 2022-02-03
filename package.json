@@ -32,6 +32,8 @@
     "test": "npx hardhat test",
     "prepare": "npx hardhat compile && npx hardhat node",
     "utils": "./scripts/deploy.sh utils localhost",
+    "erc20vest": "./scripts/deploy.sh erc20vest localhost",
+    "libs": "./scripts/deploy.sh libs localhost",
     "dev": "./scripts/deploy.sh all localhost",
     "fuji": "npx hardhat compile && npx hardhat node && npx hardhat run scripts/deploy.js --network fuji",
     "matic": "npx hardhat compile && npx hardhat node && npx hardhat run scripts/deploy.js --network matic",
