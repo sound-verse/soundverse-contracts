@@ -2,6 +2,7 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 const { network } = require('hardhat')
+const { utils } = require('web3')
 
 describe('Vest.contract', function () {
   let SoundVerseTokenFactory
@@ -20,17 +21,21 @@ describe('Vest.contract', function () {
 
   beforeEach(async function () {
     SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
-    ;[owner, addr1, addr2, ...addrs] = await ethers.getSigners()
+      ;[owner, addr1, addr2, ...addrs] = await ethers.getSigners()
 
     soundVerseToken = await SoundVerseTokenFactory.deploy()
 
     const PercentageUtils = await ethers.getContractFactory("PercentageUtils");
-    utils = await PercentageUtils.deploy();
+    percentageUtils = await PercentageUtils.deploy();
 
-    VestingFactory = await ethers.getContractFactory('Vesting')
-    ;[owner2, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
+    VestingFactory = await ethers.getContractFactory('Vesting', {
+      libraries: {
+        PercentageUtils: percentageUtils.address,
+      },
+    })
+      ;[owner2, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
 
-    vesting = await VestingFactory.deploy(soundVerseToken.address, utils.address, [
+    vesting = await VestingFactory.deploy(soundVerseToken.address, [
       1000000,
       1000000,
       1000000,
