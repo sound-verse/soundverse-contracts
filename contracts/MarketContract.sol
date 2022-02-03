@@ -44,98 +44,10 @@ contract MarketContract is Ownable, ReentrancyGuard {
 
     mapping(uint256 => MarketItem) private idToMarketItem;
 
-    event MarketItemCreated(
-        uint256 indexed itemId,
-        address indexed nftContract,
-        uint256 indexed tokenId,
-        address seller,
-        address owner,
-        uint256 price,
-        bool sold
-    );
-
-    /**
-     * @dev Returns the listing price of the contract
-     */
-    function getListingPrice() public pure returns (uint256) {
-        return LISTING_PRICE;
-    }
-
-    mapping(address => uint256) public userFees;
-
     /**
      * @dev Event to be triggered after successful withdrawal
      */
     event Withdrawal(address _payee, uint256 _amount);
-
-    /**
-     * @dev This function places an item for sale on the marketplace
-     * @param _contractType SoundVerse contract standard to list (SoundVerseERC721, SoundVerseERC1155)
-     * @param _tokenId ID of item to be listed
-     * @param _tokenPrice Listing price
-     */
-    function createMarketItem(
-        string memory _contractType,
-        uint256 _tokenId,
-        uint256 _tokenPrice
-    ) public payable nonReentrant {
-        //Require tokenPrice to be greater than zero
-        require(_tokenPrice > 0.1 ether, "Price must be greater than 0.1");
-        require(
-            msg.value == LISTING_PRICE,
-            "Price must be equal to listing price"
-        );
-
-        address _nftContractAddress;
-        if (commonUtils.compareStrings(_contractType, SV721)) {
-            _nftContractAddress = commonUtils.getContractAddressFrom(SV721);
-        } else {
-            _nftContractAddress = commonUtils.getContractAddressFrom(SV1155);
-        }
-
-        _itemIds.increment();
-        uint256 itemId = _itemIds.current();
-
-        idToMarketItem[itemId] = MarketItem(
-            itemId,
-            _nftContractAddress,
-            _tokenId,
-            payable(_msgSender()),
-            payable(address(0)),
-            _tokenPrice,
-            false
-        );
-
-        if (commonUtils.compareStrings(_contractType, SV721)) {
-            // ERC721 - Master
-            IERC721(_nftContractAddress).transferFrom(
-                _msgSender(),
-                address(this),
-                _tokenId
-            );
-        } else {
-            //ERC1155 - Licenses
-            IERC1155(_nftContractAddress).safeTransferFrom(
-                _msgSender(),
-                address(this),
-                _tokenId,
-                1,
-                _msgData()
-            );
-        }
-
-        emit MarketItemCreated(
-            itemId,
-            _nftContractAddress,
-            _tokenId,
-            _msgSender(),
-            address(0),
-            _tokenPrice,
-            false
-        );
-
-        payable(admin).transfer(LISTING_PRICE);
-    }
 
     /**
      * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties

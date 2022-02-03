@@ -12,7 +12,7 @@ interface ICommonUtils {
         address _contractAddress
     ) external;
 
-    function toBytes(address a) external pure returns (bytes memory);
+    function toBytes(uint256 a) external pure returns (bytes memory);
 
     function compareStrings(string memory a, string memory b)
         external
@@ -40,7 +40,7 @@ contract CommonUtils {
         addressBook[_contractName] = _contractAddress;
     }
 
-    function toBytes(address a) public pure returns (bytes memory) {
+    function toBytes(uint256 a) public pure returns (bytes memory) {
         return abi.encodePacked(a);
     }
 

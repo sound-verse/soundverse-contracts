@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-describe("MarketCOntract.contract", function () {
+describe.only("MarketCOntract.contract", function () {
 
     let soundVerseERC1155;
     let marketContract;
@@ -24,14 +24,21 @@ describe("MarketCOntract.contract", function () {
         SoundVerseTokenFactory = await ethers.getContractFactory('SoundVerseToken')
         tokenContract = await SoundVerseTokenFactory.deploy();
 
-        MarketContractFactory = await ethers.getContractFactory("MarketContract");
+        const PercentageUtils = await ethers.getContractFactory("PercentageUtils");
+        percentageUtils = await PercentageUtils.deploy();
+
+        MarketContractFactory = await ethers.getContractFactory("MarketContract", {
+            libraries: {
+                PercentageUtils: percentageUtils.address,
+            },
+        });
         [owner, addr1, addr2, addr3] = await ethers.getSigners();
         marketContract = await MarketContractFactory.deploy(tokenContract.address);
 
         SoundVerseERC1155Factory = await ethers.getContractFactory('SoundVerseERC1155')
-        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy(marketContract.address)
+        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy();
 
-        expect(await soundVerseERC1155.mint(owner.address, firstTokenId, uri, tokensAmount, '0x', { from: owner.address }));
+        expect(await soundVerseERC1155.mintLicenses(owner.address, uri, tokensAmount, '0x', { from: owner.address }));
         expect(await tokenContract.transfer(addr1.address, tokenAmountTier1));
         expect(await tokenContract.transfer(addr2.address, tokenAmountTier2));
         expect(await tokenContract.transfer(addr3.address, tokenAmountTier3));

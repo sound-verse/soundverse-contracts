@@ -86,7 +86,7 @@ contract SoundVerseERC721 is
             _to,
             _mintURI,
             _amount,
-            commonUtils.toBytes(address(this))
+            commonUtils.toBytes(currentTokenId)
         );
     }
 
