@@ -31,7 +31,6 @@ contract SoundVerseERC1155 is
     //Constants and variables
     Counters.Counter private _licenseBundleId;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    uint256 public constant MIN_SUPPLY = 2;
 
     mapping(uint256 => string) private _uris;
 
@@ -77,13 +76,8 @@ contract SoundVerseERC1155 is
         string memory _mintURI,
         uint256 _amount,
         bytes memory _erc721Reference
-    ) external {
+    ) public {
         uint256 currentLicenseBundleId = _licenseBundleId.current();
-        require(bytes(_mintURI).length != 0, "URI can not be empty");
-        require(_amount >= MIN_SUPPLY, "Supply must be greater than 2");
-
-        // setApprovalForAll(marketplaceAddress, true);
-
         mint(_to, currentLicenseBundleId, _mintURI, _amount, _erc721Reference);
     }
 
@@ -95,7 +89,6 @@ contract SoundVerseERC1155 is
      * @param _mintURI URI of the song
      * @param _amount amount of licenses to be created
      * @param _erc721Reference reference of the Master NFT
-     *
      */
     function mint(
         address _to,
