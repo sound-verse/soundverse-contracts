@@ -12,7 +12,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 interface ISoundVerseERC1155 {
     function mintLicenses(
-        address _to,
+        address _signer,
+        address _buyer,
         string memory _mintURI,
         uint256 _amount,
         bytes memory _erc721Reference
@@ -66,32 +67,36 @@ contract SoundVerseERC1155 is
      * @dev Creates `amount` new tokens for `to`, of token type `id`.
      *
      * See {ERC1155-_mint}.
-     * @param _to address of the receiver
+     * @param _signer address of the creator
+     * @param _buyer address of the buyer
      * @param _mintURI URI of the song
      * @param _amount amount of licenses to be created
      * @param _erc721Reference reference of the Master NFT
      */
     function mintLicenses(
-        address _to,
+        address _signer,
+        address _buyer,
         string memory _mintURI,
         uint256 _amount,
         bytes memory _erc721Reference
     ) public {
         uint256 currentLicenseBundleId = _licenseBundleId.current();
-        mint(_to, currentLicenseBundleId, _mintURI, _amount, _erc721Reference);
+        mint(_signer, _buyer, currentLicenseBundleId, _mintURI, _amount, _erc721Reference);
     }
 
     /**
      * @dev Mint Master
      *
-     * @param _to address of the receiver
+     * @param _signer address of the creator
+     * @param _buyer address of the buyer
      * @param _currentLicenseBundleId ID of the Master NFT
      * @param _mintURI URI of the song
      * @param _amount amount of licenses to be created
      * @param _erc721Reference reference of the Master NFT
      */
     function mint(
-        address _to,
+        address _signer,
+        address _buyer,
         uint256 _currentLicenseBundleId,
         string memory _mintURI,
         uint256 _amount,
@@ -100,7 +105,9 @@ contract SoundVerseERC1155 is
         _licenseBundleId.increment();
 
         setTokenUri(_currentLicenseBundleId, _mintURI);
-        _mint(_to, _currentLicenseBundleId, _amount, _erc721Reference);
+        _mint(_signer, _currentLicenseBundleId, _amount, _erc721Reference);
+
+        _safeTransferFrom(_signer, _buyer, _currentLicenseBundleId, 1, _erc721Reference);
     }
 
     /**

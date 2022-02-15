@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "hardhat/console.sol";
 import "./SoundVerseERC1155.sol";
 import "./CommonUtils.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -12,6 +11,15 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+interface ISoundVerseERC721 {
+    function createMasterItem(
+        address buyer,
+        address signer,
+        string memory tokenURI,
+        uint256 _licensesAmount
+    ) external;
+}
 
 contract SoundVerseERC721 is
     AccessControlEnumerable,
@@ -28,6 +36,7 @@ contract SoundVerseERC721 is
 
     // Constants and variables
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string public constant SV1155 = "SoundVerseERC1155";
     uint256 public constant MIN_SUPPLY = 2;
     Counters.Counter private _tokenIdTracker;
@@ -39,9 +48,7 @@ contract SoundVerseERC721 is
      * @dev Constructor of Master NFT
      * @param _commonUtilsAddress CommonUtils contract address
      */
-    constructor(address _commonUtilsAddress)
-        ERC721("SoundVerseMaster", "SVM")
-    {   
+    constructor(address _commonUtilsAddress) ERC721("SoundVerseMaster", "SVM") {
         _setupRole(PAUSER_ROLE, _msgSender());
 
         commonUtils = ICommonUtils(_commonUtilsAddress);
@@ -50,40 +57,94 @@ contract SoundVerseERC721 is
     }
 
     /**
+     * @dev Project creator mapping
+     */
+    mapping(uint256 => address) private _creators;
+
+    /**
+     * @dev Sets token creator for token type `id`.
+     * @param tokenId token ID receiving the creator
+     * @param _creator Creator of the project
+     */
+    function setTokenCreator(uint256 tokenId, address _creator) internal {
+         _setupRole(MINTER_ROLE, _creator);
+        _creators[tokenId] = _creator;
+    }
+
+    /**
+     * @param tokenId token ID receiving the creator
+     * @return address from creator of the project
+     */
+    function creator(uint256 tokenId) internal view returns (address) {
+        return _creators[tokenId];
+    }
+
+    /**
+     * @dev tokenURIs
+     */
+    mapping(uint256 => string) private _uris;
+
+    /**
+     * @dev Returns the actual `baseURI` for token type `id`.
+     * @param tokenId token ID to retrieve the uri from
+     * @return URI from token ID
+     */
+    function uri(uint256 tokenId) public view returns (string memory) {
+        return (_uris[tokenId]);
+    }
+
+    /**
      * @dev Main minting function
      * Function to called by the BE to trigger Master and License minting
+     * @param _buyer address of the buyer
+     * @param _signer address of creator
      * @param tokenURI URI of the song to be minted
      * @param _licensesAmount amount of licenses to mint linked to the Master NFT
      * Finally approves the Marketplace to handle the Master
      */
-    function createMasterItem(string memory tokenURI, uint256 _licensesAmount)
-        public
-    {   
+    function createMasterItem(
+        address _buyer,
+        address _signer,
+        string memory tokenURI,
+        uint256 _licensesAmount
+    ) public {
         require(bytes(tokenURI).length > 0, "TokenUri can not be null");
         require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
-        mintItem(_msgSender(), tokenURI, _licensesAmount);
+        mintItem(_buyer, _signer, tokenURI, _licensesAmount);
     }
 
     /**
      * @dev Mint function that mints Master NFT and linked licenses
-     * @param _to address of creator
+     * @param _buyer address of the buyer
+     * @param _signer address of creator
      * @param _mintURI URI of the song to be minted
      * @param _amount amount of licenses to mint linked to the Master NFT
      */
     function mintItem(
-        address _to,
+        address _buyer,
+        address _signer,
         string memory _mintURI,
         uint256 _amount
     ) private {
         uint256 currentTokenId = _tokenIdTracker.current();
         _tokenIdTracker.increment();
+        require(
+            bytes(_uris[currentTokenId]).length == 0,
+            "Cannot set URI twice"
+        );
 
-        _safeMint(_to, currentTokenId);
+        // Creator in mapping speichern anhand tokenId
+        setTokenCreator(currentTokenId, _signer);
+
+        _safeMint(_signer, currentTokenId);
         _setTokenURI(currentTokenId, _mintURI);
         emit MasterMintEvent(currentTokenId);
 
+        _transfer(_signer, _buyer, currentTokenId);
+
         licensesContract.mintLicenses(
-            _to,
+            _signer,
+            _buyer,
             _mintURI,
             _amount,
             commonUtils.toBytes(currentTokenId)

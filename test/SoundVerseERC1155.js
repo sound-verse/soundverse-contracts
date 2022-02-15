@@ -2,7 +2,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 const { ZERO_ADDRESS } = constants;
 const { expect } = require("chai");
 
-describe('SoundVerseERC1155.contract', function () {
+describe.only('SoundVerseERC1155.contract', function () {
 
     let soundVerseERC1155;
 

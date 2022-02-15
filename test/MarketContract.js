@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-describe.only("MarketCOntract.contract", function () {
+describe("MarketCOntract.contract", function () {
 
     let soundVerseERC1155;
     let marketContract;
