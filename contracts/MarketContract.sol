@@ -23,7 +23,6 @@ contract MarketContract is
     using Counters for Counters.Counter;
     using SafeMath for uint256;
     address payable internal admin;
-    Counters.Counter private _itemIds;
     Counters.Counter private _itemsSold;
 
     // Constants
@@ -39,11 +38,9 @@ contract MarketContract is
     ISoundVerseERC1155 public licensesContract;
     ISoundVerseERC721 public masterContract;
 
-    constructor(
-        // address payable _minter,
-        address _commonUtilsAddress
-    ) EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {
-        // _setupRole(MINTER_ROLE, _minter);
+    constructor(address _commonUtilsAddress)
+        EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION)
+    {
         admin = payable(owner());
 
         commonUtils = ICommonUtils(_commonUtilsAddress);
@@ -58,15 +55,9 @@ contract MarketContract is
         uint256 price;
         Counters.Counter sellCount;
         string tokenUri;
-        uint256 licensesSupply;
-        bytes signature;
-    }
-
-    struct ItemVoucher {
         uint256 tokenId;
-        address nftContractAddress;
-        uint256 price;
-        Counters.Counter sellCount;
+        uint256 supply;
+        bool isMaster;
         bytes signature;
     }
 
@@ -89,14 +80,23 @@ contract MarketContract is
 
     /**
      * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties
-     * @param _mintVoucher Nft Voucher to be redeemed
+     * @param _buyer The address of the account which will receive the NFT upon success.
+     * @param _amountToPurchase scjajassk
+     * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
      */
-    function redeemAndMintItem(address _buyer, MintVoucher calldata _mintVoucher)
-        public
-        payable
-        nonReentrant
-    {
+    function redeemItem(
+        address _buyer,
+        uint256 _amountToPurchase,
+        MintVoucher calldata _mintVoucher
+    ) public payable nonReentrant {
         address _signer = _verify(_mintVoucher);
+
+        // make sure that the signer is authorized to mint NFTs
+        require(
+            hasRole(MINTER_ROLE, _signer),
+            "Signature invalid or unauthorized"
+        );
+
         uint256 purchaseFees = serviceFees();
 
         // Calculate fees and requires to pay services fees on top
@@ -106,15 +106,23 @@ contract MarketContract is
         );
 
         // Total amount to pay with service fees
-        uint256 purchasePriceWithServiceFee = calculateAmountToPay(
-            _mintVoucher.price,
+        // _amountToPurchase gilt nur fuer Licenses!!!
+        uint256 purchasePriceWithServiceFee = 0;
+        if (_mintVoucher.isMaster == true) {
+            purchasePriceWithServiceFee = calculateAmountToPay(
+                _mintVoucher.price,
+                calculatedServiceFees,
+                1
+            );
+        } else {
+            purchasePriceWithServiceFee = calculateAmountToPay(
+                _mintVoucher.price,
+                calculatedServiceFees,
+                _amountToPurchase
+            );
+        }
+        uint256 purchasePrice = purchasePriceWithServiceFee.sub(
             calculatedServiceFees
-        );
-
-        // make sure that the signer is authorized to mint NFTs
-        require(
-            hasRole(MINTER_ROLE, _signer),
-            "Signature invalid or unauthorized"
         );
 
         // make sure that the redeemer is paying enough to cover the buyer's cost
@@ -123,13 +131,47 @@ contract MarketContract is
             "Insufficient funds to redeem"
         );
 
-        //ERC-721 - Master
-        masterContract.createMasterItem(
-            _buyer,
-            _signer,
-            _mintVoucher.tokenUri,
-            _mintVoucher.licensesSupply
-        );
+        //  TODO() require(_mintVoucher.sellCount == marketplaceSellCount);
+
+        // true -> Mint
+        // false -> Purchase
+        uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
+        if (tokenId == 0) {
+            tokenId = masterContract.createMasterItem(
+                _signer,
+                _mintVoucher.tokenUri,
+                _mintVoucher.supply
+            );
+        }
+
+        // Transfer NFTS
+        uint256 licensesAmountFromSigner;
+        if (_mintVoucher.isMaster == true) {
+            //transfer money to seller
+            payable(_signer).transfer(purchasePrice);
+
+            // Transfer master and license(s) to buyer
+            masterContract._transfer(_signer, _buyer, tokenId);
+            licensesAmountFromSigner = licensesContract.balanceOf(
+                _signer,
+                tokenId
+            );
+            licensesContract._safeTransferFrom(
+                _signer,
+                _buyer,
+                tokenId,
+                licensesAmountFromSigner
+            );
+            _itemsSold.increment();
+        } else {
+            // Transfer license(s) to buyer
+            licensesContract._safeTransferFrom(
+                _signer,
+                _buyer,
+                tokenId,
+                _amountToPurchase
+            );
+        }
 
         withdrawFees(calculatedServiceFees);
     }
@@ -147,19 +189,23 @@ contract MarketContract is
      * @dev Calculates total order amount
      * @param _tokenPrice Amount of fees to pay to marketplace
      * @param _fees Purchase fees
+     * @param _amountToPurchase Amount of licenses to be purchased
      * @return uint256 Total order amount
      */
-    function calculateAmountToPay(uint256 _tokenPrice, uint256 _fees)
-        internal
-        pure
-        returns (uint256)
-    {
-        return _tokenPrice.mul(1).add(_fees);
+    function calculateAmountToPay(
+        uint256 _tokenPrice,
+        uint256 _fees,
+        uint256 _amountToPurchase
+    ) internal pure returns (uint256) {
+        return
+            _tokenPrice.mul(_amountToPurchase).add(
+                (_fees.mul(_amountToPurchase))
+            );
     }
 
     /**
      * @notice Returns a hash of the given Voucher, prepared using EIP712 typed data hashing rules.
-     * @param voucher An NFTVoucher to hash.
+     * @param voucher An MintVoucher to hash.
      */
     function _hash(MintVoucher calldata voucher)
         internal
@@ -171,7 +217,7 @@ contract MarketContract is
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "NFTVoucher(uint256 tokenId,uint256 minPrice,string uri)"
+                            "MintVoucher(uint256 tokenId,uint256 minPrice,string uri)"
                         ),
                         voucher.tokenUri,
                         voucher.price,

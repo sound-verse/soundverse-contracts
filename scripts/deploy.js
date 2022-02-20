@@ -21,7 +21,7 @@ async function main() {
 
   console.log("Deploying ERC1155 SoundVerse NFT contract");
   const SoundVerseERC1155 = await ethers.getContractFactory("SoundVerseERC1155");
-  const nft1155 = await SoundVerseERC1155.deploy();
+  const nft1155 = await SoundVerseERC1155.deploy(commonUtilsAddress);
   await nft1155.deployed();
   console.log("SoundVerseERC1155 deployed to:", nft1155.address);
 

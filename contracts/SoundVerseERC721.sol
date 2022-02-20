@@ -14,11 +14,14 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 interface ISoundVerseERC721 {
     function createMasterItem(
-        address buyer,
         address signer,
         string memory tokenURI,
-        uint256 _licensesAmount
-    ) external;
+        uint256 licensesAmount
+    ) external returns(uint256);
+
+    function _transfer(address _signer, address _buyer, uint256 currentTokenId) external;
+
+    function tokenIdForURI(string memory _uri) external returns(uint256);
 }
 
 contract SoundVerseERC721 is
@@ -67,7 +70,7 @@ contract SoundVerseERC721 is
      * @param _creator Creator of the project
      */
     function setTokenCreator(uint256 tokenId, address _creator) internal {
-         _setupRole(MINTER_ROLE, _creator);
+        _setupRole(MINTER_ROLE, _creator);
         _creators[tokenId] = _creator;
     }
 
@@ -85,7 +88,12 @@ contract SoundVerseERC721 is
     mapping(uint256 => string) private _uris;
 
     /**
-     * @dev Returns the actual `baseURI` for token type `id`.
+     * @dev TokenIDs from URIs
+     */
+    mapping(string => uint256) private _urisToIds;
+
+    /**
+     * @dev Returns the actual URI for TokenID.
      * @param tokenId token ID to retrieve the uri from
      * @return URI from token ID
      */
@@ -94,38 +102,58 @@ contract SoundVerseERC721 is
     }
 
     /**
+     * @dev Returns the actual TokenID for a given URI 
+     * @param _uri URI to retrieve the TokenID from
+     * @return URI from token ID
+     */
+    function tokenIdForURI(string memory _uri) public view returns (uint256) {
+        return (_urisToIds[_uri]);
+    }
+
+    /**
+     * @dev Sets tokenID for token URI.
+     * @param _tokenId token ID for a given URI
+     * @param _uri URI of NFT
+     */
+    function setTokenIDForURI(uint256 _tokenId, string memory _uri) internal {
+        _urisToIds[_uri] = _tokenId;
+    }
+
+    /**
      * @dev Main minting function
      * Function to called by the BE to trigger Master and License minting
-     * @param _buyer address of the buyer
      * @param _signer address of creator
      * @param tokenURI URI of the song to be minted
      * @param _licensesAmount amount of licenses to mint linked to the Master NFT
      * Finally approves the Marketplace to handle the Master
      */
     function createMasterItem(
-        address _buyer,
         address _signer,
         string memory tokenURI,
         uint256 _licensesAmount
-    ) public {
+    ) public onlyMarketplace returns (uint256) {
         require(bytes(tokenURI).length > 0, "TokenUri can not be null");
         require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
-        mintItem(_buyer, _signer, tokenURI, _licensesAmount);
+        uint256 tokenId = mintItem(
+            _signer,
+            tokenURI,
+            _licensesAmount
+        );
+
+        return tokenId;
     }
 
     /**
      * @dev Mint function that mints Master NFT and linked licenses
-     * @param _buyer address of the buyer
      * @param _signer address of creator
      * @param _mintURI URI of the song to be minted
-     * @param _amount amount of licenses to mint linked to the Master NFT
+     * @param _amountToMint amount of licenses to mint linked to the Master NFT
      */
     function mintItem(
-        address _buyer,
         address _signer,
         string memory _mintURI,
-        uint256 _amount
-    ) private {
+        uint256 _amountToMint
+    ) private returns (uint256) {
         uint256 currentTokenId = _tokenIdTracker.current();
         _tokenIdTracker.increment();
         require(
@@ -138,17 +166,17 @@ contract SoundVerseERC721 is
 
         _safeMint(_signer, currentTokenId);
         _setTokenURI(currentTokenId, _mintURI);
+        setTokenIDForURI(currentTokenId, _mintURI);
         emit MasterMintEvent(currentTokenId);
-
-        _transfer(_signer, _buyer, currentTokenId);
 
         licensesContract.mintLicenses(
             _signer,
-            _buyer,
             _mintURI,
-            _amount,
+            _amountToMint,
             commonUtils.toBytes(currentTokenId)
         );
+
+        return currentTokenId;
     }
 
     /**
@@ -217,5 +245,10 @@ contract SoundVerseERC721 is
         uint256 tokenId
     ) internal virtual override(ERC721) {
         super._beforeTokenTransfer(from, to, tokenId);
+    }
+
+    modifier onlyMarketplace() {
+        require(msg.sender == commonUtils.getContractAddressFrom("Marketplace"));
+        _;
     }
 }
