@@ -12,9 +12,6 @@ async function main() {
       PercentageUtils: percentageUtilsLibAddress,
     },
   });
-  const marketContract = await MarketContract.deploy(commonUtilsAddress);
-  await marketContract.deployed();
-  console.log("NFT Market contract deployed to:", marketContract.address);
 
   const CommonUtils = await ethers.getContractFactory("CommonUtils");
   const utils = await CommonUtils.attach(commonUtilsAddress);
@@ -33,8 +30,12 @@ async function main() {
   await nft721.deployed();
   console.log("SoundVerseERC721 deployed to:", nft721.address);
 
+  const marketContract = await MarketContract.deploy(commonUtilsAddress);
+  await marketContract.deployed();
+  console.log("NFT Market contract deployed to:", marketContract.address);
+
   await utils.setContractAddressFor("SoundVerseERC721", nft721.address);
-  // await utils.setContractAddressFor("MarketContract", marketContract.address);
+  await utils.setContractAddressFor("MarketContract", marketContract.address);
 
 }
 
