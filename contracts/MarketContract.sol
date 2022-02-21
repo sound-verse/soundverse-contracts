@@ -31,7 +31,7 @@ contract MarketContract is
     string private constant SIGNATURE_VERSION = "1";
     string public constant SV721 = "SoundVerseERC721";
     string public constant SV1155 = "SoundVerseERC1155";
-    uint256 public _serviceFees;
+    uint256 public _serviceFees = 3000;
 
     //Contracts
     ICommonUtils public commonUtils;
