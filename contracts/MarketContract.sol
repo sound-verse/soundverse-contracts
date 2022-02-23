@@ -22,8 +22,10 @@ contract MarketContract is
 {
     using Counters for Counters.Counter;
     using SafeMath for uint256;
+
     address payable internal admin;
     Counters.Counter private _itemsSold;
+    uint256 public _serviceFees;
 
     // Constants
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -31,17 +33,36 @@ contract MarketContract is
     string private constant SIGNATURE_VERSION = "1";
     string public constant SV721 = "SoundVerseERC721";
     string public constant SV1155 = "SoundVerseERC1155";
-    uint256 public _serviceFees = 3000;
+
+    // Mappings
+    mapping(address => mapping(uint256 => uint256)) public sellCounts;
 
     //Contracts
     ICommonUtils public commonUtils;
     ISoundVerseERC1155 public licensesContract;
     ISoundVerseERC721 public masterContract;
 
+    // Events
+    event Withdrawal(address _payee, uint256 _amount);
+    event UnlistNFTEvent(uint256 tokenId, string tokenURI);
+
+    // Structs
+    struct MintVoucher {
+        address nftContractAddress;
+        uint256 price;
+        uint256 sellCount;
+        string tokenUri;
+        uint256 tokenId;
+        uint256 supply;
+        bool isMaster;
+        bytes signature;
+    }
+
     constructor(address _commonUtilsAddress)
         EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION)
     {
         admin = payable(owner());
+        _serviceFees = 3000;
 
         commonUtils = ICommonUtils(_commonUtilsAddress);
         address sv1155 = commonUtils.getContractAddressFrom(SV1155);
@@ -50,38 +71,10 @@ contract MarketContract is
         masterContract = ISoundVerseERC721(sv721);
     }
 
-    struct MintVoucher {
-        address nftContractAddress;
-        uint256 price;
-        Counters.Counter sellCount;
-        string tokenUri;
-        uint256 tokenId;
-        uint256 supply;
-        bool isMaster;
-        bytes signature;
-    }
-
-    /**
-     * @dev Event to be triggered after successful withdrawal
-     */
-    event Withdrawal(address _payee, uint256 _amount);
-
-    function setServiceFees(uint256 _newServiceFees) private onlyOwner {
-        require(
-            _newServiceFees > 0 && _newServiceFees <= 5000,
-            "Service fees cap is 5%"
-        );
-        _serviceFees = _newServiceFees;
-    }
-
-    function serviceFees() public view returns (uint256) {
-        return _serviceFees;
-    }
-
     /**
      * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties
      * @param _buyer The address of the account which will receive the NFT upon success.
-     * @param _amountToPurchase scjajassk
+     * @param _amountToPurchase Amount of items to be purchased
      * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
      */
     function redeemItem(
@@ -106,7 +99,6 @@ contract MarketContract is
         );
 
         // Total amount to pay with service fees
-        // _amountToPurchase gilt nur fuer Licenses!!!
         uint256 purchasePriceWithServiceFee = 0;
         if (_mintVoucher.isMaster == true) {
             purchasePriceWithServiceFee = calculateAmountToPay(
@@ -131,7 +123,7 @@ contract MarketContract is
             "Insufficient funds to redeem"
         );
 
-        //  TODO() require(_mintVoucher.sellCount == marketplaceSellCount);
+        //require(_mintVoucher.sellCount);
 
         // true -> Mint
         // false -> Purchase
@@ -163,6 +155,7 @@ contract MarketContract is
                 licensesAmountFromSigner
             );
             _itemsSold.increment();
+            incrementSellCount(_buyer, tokenId);
         } else {
             // Transfer license(s) to buyer
             licensesContract._safeTransferFrom(
@@ -174,6 +167,52 @@ contract MarketContract is
         }
 
         withdrawFees(calculatedServiceFees);
+    }
+
+    /**
+     * @dev Sets the % of the services fees
+     * @param _newServiceFees Value in % of the services fees to set
+     */
+    function setServiceFees(uint256 _newServiceFees) private onlyOwner {
+        require(
+            _newServiceFees > 0 && _newServiceFees <= 5000,
+            "Service fees cap is 5%"
+        );
+        _serviceFees = _newServiceFees;
+    }
+
+    /**
+     * @dev Returns service fees
+     */
+    function serviceFees() public view returns (uint256) {
+        return _serviceFees;
+    }
+
+    /**
+     * @dev Gets the sell count if it exists, otherwise returns 0
+     * @param _ownerAddress Address of the NFT owner
+     * @param _tokenId TokenId of the NFT
+     */
+    function getSellCount(address _ownerAddress, uint256 _tokenId)
+        private
+        view
+        returns (uint256)
+    {
+        if (sellCounts[_ownerAddress][_tokenId] == 0) {
+            return 0;
+        }
+        return sellCounts[_ownerAddress][_tokenId];
+    }
+
+    /**
+     * @dev Increments the sell count
+     * @param _ownerAddress Address of the NFT owner
+     * @param _tokenId TokenId of the NFT
+     */
+    function incrementSellCount(address _ownerAddress, uint256 _tokenId)
+        private
+    {
+        sellCounts[_ownerAddress][_tokenId] += 1;
     }
 
     /**

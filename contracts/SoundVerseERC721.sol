@@ -45,7 +45,7 @@ contract SoundVerseERC721 is
     Counters.Counter private _tokenIdTracker;
 
     // Events
-    event MasterMintEvent(uint256 indexed id, string memory uri);
+    event MasterMintEvent(uint256 indexed id, string uri);
 
     /**
      * @dev Constructor of Master NFT
