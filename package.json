@@ -28,10 +28,10 @@
     "solidity-coverage": "^0.7.17"
   },
   "scripts": {
-    "compile": "npx hardhat compile",
+    "node": "npx hardhat node",
     "console": "npx hardhat console",
     "test": "npx hardhat test",
-    "prepare": "npx hardhat compile && npx hardhat node",
+    "prepare": "npx hardhat compile",
     "utils": "./scripts/deploy.sh utils localhost",
     "erc20vest": "./scripts/deploy.sh erc20vest localhost",
     "libs": "./scripts/deploy.sh libs localhost",
