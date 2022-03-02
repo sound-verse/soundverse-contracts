@@ -24,7 +24,7 @@ contract MarketContract is
     using SafeMath for uint256;
 
     address payable internal admin;
-    Counters.Counter private _itemsSold;
+    Counters.Counter private itemsSold;
     uint256 public _serviceFees;
 
     // Constants
@@ -35,7 +35,7 @@ contract MarketContract is
     string public constant SV1155 = "SoundVerseERC1155";
 
     // Mappings
-    mapping(address => mapping(uint256 => uint256)) public sellCounts;
+    mapping(address => mapping(address => SellCount)) public sellCounts;
 
     //Contracts
     ICommonUtils public commonUtils;
@@ -44,7 +44,7 @@ contract MarketContract is
 
     // Events
     event Withdrawal(address _payee, uint256 _amount);
-    event UnlistNFTEvent(uint256 tokenId, string tokenURI);
+    event UnlistedNFT(uint256 tokenId);
 
     // Structs
     struct MintVoucher {
@@ -58,6 +58,12 @@ contract MarketContract is
         bytes signature;
     }
 
+    struct SellCount {
+        uint256 tokenId;
+        uint256 sellCount;
+    }
+
+    // Constructor
     constructor(address _commonUtilsAddress)
         EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION)
     {
@@ -123,7 +129,12 @@ contract MarketContract is
             "Insufficient funds to redeem"
         );
 
-        //require(_mintVoucher.sellCount);
+        require(
+            sellCounts[_signer][_mintVoucher.nftContractAddress].tokenId ==
+                _mintVoucher.tokenId &&
+                _mintVoucher.sellCount ==
+                sellCounts[_signer][_mintVoucher.nftContractAddress].sellCount
+        );
 
         // true -> Mint
         // false -> Purchase
@@ -154,8 +165,7 @@ contract MarketContract is
                 tokenId,
                 licensesAmountFromSigner
             );
-            _itemsSold.increment();
-            incrementSellCount(_buyer, tokenId);
+            itemsSold.increment();
         } else {
             // Transfer license(s) to buyer
             licensesContract._safeTransferFrom(
@@ -165,7 +175,7 @@ contract MarketContract is
                 _amountToPurchase
             );
         }
-
+        incrementSellCount(_buyer, _mintVoucher.nftContractAddress, tokenId);
         withdrawFees(calculatedServiceFees);
     }
 
@@ -193,26 +203,51 @@ contract MarketContract is
      * @param _ownerAddress Address of the NFT owner
      * @param _tokenId TokenId of the NFT
      */
-    function getSellCount(address _ownerAddress, uint256 _tokenId)
-        private
-        view
-        returns (uint256)
-    {
-        if (sellCounts[_ownerAddress][_tokenId] == 0) {
+    function getSellCount(
+        address _ownerAddress,
+        address _nftContractAddress,
+        uint256 _tokenId
+    ) private view returns (uint256) {
+        if (
+            sellCounts[_ownerAddress][_nftContractAddress].tokenId == 0 ||
+            sellCounts[_ownerAddress][_nftContractAddress].tokenId != _tokenId
+        ) {
             return 0;
         }
-        return sellCounts[_ownerAddress][_tokenId];
+        return sellCounts[_ownerAddress][_nftContractAddress].sellCount;
     }
 
     /**
      * @dev Increments the sell count
      * @param _ownerAddress Address of the NFT owner
+     * @param _nftContractAddress Address of the NFT contract
      * @param _tokenId TokenId of the NFT
      */
-    function incrementSellCount(address _ownerAddress, uint256 _tokenId)
-        private
-    {
-        sellCounts[_ownerAddress][_tokenId] += 1;
+    function incrementSellCount(
+        address _ownerAddress,
+        address _nftContractAddress,
+        uint256 _tokenId
+    ) private {
+        if (
+            sellCounts[_ownerAddress][_nftContractAddress].tokenId == _tokenId
+        ) {
+            sellCounts[_ownerAddress][_nftContractAddress].sellCount += 1;
+        }
+    }
+
+    /**
+     * @dev Increments the sell count
+     * @param _ownerAddress Address of the NFT owner
+     * @param _nftContractAddress Address of the NFT contract
+     * @param _tokenId TokenId of the NFT
+     */
+    function unlistItem(
+        address _ownerAddress,
+        address _nftContractAddress,
+        uint256 _tokenId
+    ) public {
+        incrementSellCount(_ownerAddress, _nftContractAddress, _tokenId);
+        emit UnlistedNFT(_tokenId);
     }
 
     /**
