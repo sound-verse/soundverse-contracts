@@ -2,10 +2,11 @@
 pragma solidity ^0.8.4;
 pragma abicoder v2;
 
-import "./SoundVerseERC721.sol";
-import "./SoundVerseERC1155.sol";
 import "./CommonUtils.sol";
 import "./libs/PercentageUtils.sol";
+import "./interfaces/IMaster.sol";
+import "./interfaces/ILicense.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -31,16 +32,16 @@ contract MarketContract is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string private constant SIGNING_DOMAIN = "SV-Voucher";
     string private constant SIGNATURE_VERSION = "1";
-    string public constant SV721 = "SoundVerseERC721";
-    string public constant SV1155 = "SoundVerseERC1155";
+    string public constant MASTER = "Master";
+    string public constant LICENSE = "License";
 
     // Mappings
     mapping(address => mapping(address => SellCount)) public sellCounts;
 
     //Contracts
     ICommonUtils public commonUtils;
-    ISoundVerseERC1155 public licensesContract;
-    ISoundVerseERC721 public masterContract;
+    ILicense public licensesContract;
+    IMaster public masterContract;
 
     // Events
     event Withdrawal(address _payee, uint256 _amount);
@@ -71,10 +72,10 @@ contract MarketContract is
         _serviceFees = 3000;
 
         commonUtils = ICommonUtils(_commonUtilsAddress);
-        address sv1155 = commonUtils.getContractAddressFrom(SV1155);
-        address sv721 = commonUtils.getContractAddressFrom(SV721);
-        licensesContract = ISoundVerseERC1155(sv1155);
-        masterContract = ISoundVerseERC721(sv721);
+        address licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
+        address masterAddress = commonUtils.getContractAddressFrom(MASTER);
+        licensesContract = ILicense(licenseAddress);
+        masterContract = IMaster(masterAddress);
     }
 
     /**
@@ -154,7 +155,7 @@ contract MarketContract is
             payable(_signer).transfer(purchasePrice);
 
             // Transfer master and license(s) to buyer
-            masterContract._transfer(_signer, _buyer, tokenId);
+            masterContract.transferMaster(_signer, _buyer, tokenId);
             licensesAmountFromSigner = licensesContract.balanceOf(
                 _signer,
                 tokenId
