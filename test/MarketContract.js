@@ -2,7 +2,7 @@ const { expect } = require("chai");
 
 describe("MarketCOntract.contract", function () {
 
-    let soundVerseERC1155;
+    let license;
     let marketContract;
     let tokenContract;
     let owner;
@@ -35,15 +35,15 @@ describe("MarketCOntract.contract", function () {
         [owner, addr1, addr2, addr3] = await ethers.getSigners();
         marketContract = await MarketContractFactory.deploy(tokenContract.address);
 
-        SoundVerseERC1155Factory = await ethers.getContractFactory('SoundVerseERC1155')
-        soundVerseERC1155 = await SoundVerseERC1155Factory.deploy();
+        LicenseFactory = await ethers.getContractFactory('License')
+        license = await LicenseFactory.deploy();
 
-        expect(await soundVerseERC1155.mintLicenses(owner.address, uri, tokensAmount, '0x', { from: owner.address }));
+        expect(await license.mintLicenses(owner.address, uri, tokensAmount, '0x', { from: owner.address }));
         expect(await tokenContract.transfer(addr1.address, tokenAmountTier1));
         expect(await tokenContract.transfer(addr2.address, tokenAmountTier2));
         expect(await tokenContract.transfer(addr3.address, tokenAmountTier3));
 
-        expect(await soundVerseERC1155.getRoleMember(DEFAULT_ADMIN_ROLE, 0)).to.equal(owner.address);
+        expect(await license.getRoleMember(DEFAULT_ADMIN_ROLE, 0)).to.equal(owner.address);
 
         //should throw error if not buying for the correct amount
         let price = (tokenPrice * 5) + 1

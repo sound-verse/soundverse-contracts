@@ -6,7 +6,7 @@ async function main() {
   const commonUtilsAddress = config.commonUtils;
   const percentageUtilsLibAddress = config.percentageUtilsLib;
 
-  console.log("Deploying NFT Market contract")
+  console.log("Deploying Market contract")
   const MarketContract = await ethers.getContractFactory("MarketContract", {
     libraries: {
       PercentageUtils: percentageUtilsLibAddress,
@@ -16,25 +16,25 @@ async function main() {
   const CommonUtils = await ethers.getContractFactory("CommonUtils");
   const utils = await CommonUtils.attach(commonUtilsAddress);
 
-  console.log("Deploying ERC1155 SoundVerse NFT contract");
-  const SoundVerseERC1155 = await ethers.getContractFactory("SoundVerseERC1155");
-  const nft1155 = await SoundVerseERC1155.deploy(commonUtilsAddress);
-  await nft1155.deployed();
-  console.log("SoundVerseERC1155 deployed to:", nft1155.address);
+  console.log("Deploying License contract");
+  const License = await ethers.getContractFactory("License");
+  const license = await License.deploy(commonUtilsAddress);
+  await license.deployed();
+  console.log("License deployed to:", license.address);
 
-  await utils.setContractAddressFor("SoundVerseERC1155", nft1155.address);
+  await utils.setContractAddressFor("License", license.address);
 
-  console.log("Deploying ERC721 SoundVerse NFT contract");
-  const SoundVerseERC721 = await ethers.getContractFactory("SoundVerseERC721");
-  const nft721 = await SoundVerseERC721.deploy(commonUtilsAddress);
-  await nft721.deployed();
-  console.log("SoundVerseERC721 deployed to:", nft721.address);
+  console.log("Deploying Master contract");
+  const Master = await ethers.getContractFactory("Master");
+  const master = await Master.deploy(commonUtilsAddress);
+  await master.deployed();
+  console.log("Master deployed to:", master.address);
 
   const marketContract = await MarketContract.deploy(commonUtilsAddress);
   await marketContract.deployed();
   console.log("NFT Market contract deployed to:", marketContract.address);
 
-  await utils.setContractAddressFor("SoundVerseERC721", nft721.address);
+  await utils.setContractAddressFor("Master", master.address);
   await utils.setContractAddressFor("MarketContract", marketContract.address);
 
 }

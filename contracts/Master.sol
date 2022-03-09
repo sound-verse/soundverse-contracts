@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./SoundVerseERC1155.sol";
+import "./interfaces/IMaster.sol";
+import "./interfaces/ILicense.sol";
 import "./CommonUtils.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
@@ -12,19 +13,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-interface ISoundVerseERC721 {
-    function createMasterItem(
-        address signer,
-        string memory tokenURI,
-        uint256 licensesAmount
-    ) external returns(uint256);
-
-    function _transfer(address _signer, address _buyer, uint256 currentTokenId) external;
-
-    function tokenIdForURI(string memory _uri) external returns(uint256);
-}
-
-contract SoundVerseERC721 is
+contract Master is
     AccessControlEnumerable,
     ERC721URIStorage,
     Pausable,
@@ -35,12 +24,12 @@ contract SoundVerseERC721 is
 
     // Contracts and libraries
     ICommonUtils public commonUtils;
-    ISoundVerseERC1155 public licensesContract;
+    ILicense public licensesContract;
 
     // Constants and variables
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    string public constant SV1155 = "SoundVerseERC1155";
+    string public constant LICENSE = "License";
     uint256 public constant MIN_SUPPLY = 2;
     Counters.Counter private _tokenIdTracker;
 
@@ -55,8 +44,8 @@ contract SoundVerseERC721 is
         _setupRole(PAUSER_ROLE, _msgSender());
 
         commonUtils = ICommonUtils(_commonUtilsAddress);
-        address sv1155 = commonUtils.getContractAddressFrom(SV1155);
-        licensesContract = ISoundVerseERC1155(sv1155);
+        address licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
+        licensesContract = ILicense(licenseAddress);
     }
 
     /**
@@ -102,7 +91,7 @@ contract SoundVerseERC721 is
     }
 
     /**
-     * @dev Returns the actual TokenID for a given URI 
+     * @dev Returns the actual TokenID for a given URI
      * @param _uri URI to retrieve the TokenID from
      * @return URI from token ID
      */
@@ -134,11 +123,7 @@ contract SoundVerseERC721 is
     ) public onlyMarketplace returns (uint256) {
         require(bytes(tokenURI).length > 0, "TokenUri can not be null");
         require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
-        uint256 tokenId = mintItem(
-            _signer,
-            tokenURI,
-            _licensesAmount
-        );
+        uint256 tokenId = mintItem(_signer, tokenURI, _licensesAmount);
 
         return tokenId;
     }
@@ -248,7 +233,9 @@ contract SoundVerseERC721 is
     }
 
     modifier onlyMarketplace() {
-        require(msg.sender == commonUtils.getContractAddressFrom("Marketplace"));
+        require(
+            msg.sender == commonUtils.getContractAddressFrom("Marketplace")
+        );
         _;
     }
 }

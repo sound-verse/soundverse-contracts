@@ -11,26 +11,7 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-interface ISoundVerseERC1155 {
-    function mintLicenses(
-        address signer,
-        string memory mintURI,
-        uint256 amount,
-        bytes memory erc721Reference
-    ) external;
-
-    function _safeTransferFrom(
-        address _signer,
-        address _buyer,
-        uint256 _currentLicenseBundleId,
-        uint256 _amountToPurchase
-    ) external;
-
-    function balanceOf(address account, uint256 id) external returns(uint256);
-
-}
-
-contract SoundVerseERC1155 is
+contract License is
     Context,
     AccessControlEnumerable,
     ERC1155Burnable,
@@ -186,7 +167,7 @@ contract SoundVerseERC1155 is
     }
 
     modifier onlyMarketplace() {
-        require(msg.sender == commonUtils.getContractAddressFrom("SoundVerseERC721"));
+        require(msg.sender == commonUtils.getContractAddressFrom("Master"));
         _;
     }
 
