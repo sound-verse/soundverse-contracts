@@ -23,14 +23,14 @@ contract Master is
     using Counters for Counters.Counter;
 
     // Contracts and libraries
-    ICommonUtils public commonUtils;
-    ILicense public licensesContract;
+    ICommonUtils internal commonUtils;
+    ILicense internal licensesContract;
 
     // Constants and variables
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    string public constant LICENSE = "License";
-    uint256 public constant MIN_SUPPLY = 2;
+    bytes32 internal constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 internal constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    string internal constant LICENSE = "License";
+    uint256 internal constant MIN_SUPPLY = 2;
     Counters.Counter private _tokenIdTracker;
 
     // Events
@@ -51,7 +51,7 @@ contract Master is
     /**
      * @dev Project creator mapping
      */
-    mapping(uint256 => address) private _creators;
+    mapping(uint256 => address) public _creators;
 
     /**
      * @dev Sets token creator for token type `id`.
@@ -74,12 +74,12 @@ contract Master is
     /**
      * @dev tokenURIs
      */
-    mapping(uint256 => string) private _uris;
+    mapping(uint256 => string) public _uris;
 
     /**
      * @dev TokenIDs from URIs
      */
-    mapping(string => uint256) private _urisToIds;
+    mapping(string => uint256) public _urisToIds;
 
     /**
      * @dev Returns the actual URI for TokenID.

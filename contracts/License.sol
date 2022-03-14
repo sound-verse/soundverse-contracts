@@ -21,11 +21,11 @@ contract License is
     using Counters for Counters.Counter;
 
     //Constants and variables
-    Counters.Counter private _licenseBundleId;
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    ICommonUtils public commonUtils;
+    Counters.Counter internal _licenseBundleId;
+    bytes32 internal constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    ICommonUtils internal commonUtils;
 
-    mapping(uint256 => string) private _uris;
+    mapping(uint256 => string) public _uris;
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
@@ -51,7 +51,7 @@ contract License is
      * @param tokenId token ID receiving the uri
      * @param _uri URI to set to token ID
      */
-    function setTokenUri(uint256 tokenId, string memory _uri) internal {
+    function setTokenUri(uint256 tokenId, string memory _uri) public {
         require(bytes(_uris[tokenId]).length == 0, "Cannot set uri twice");
         _uris[tokenId] = _uri;
     }

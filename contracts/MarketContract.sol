@@ -29,11 +29,11 @@ contract MarketContract is
     uint256 public _serviceFees;
 
     // Constants
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    string private constant SIGNING_DOMAIN = "SV-Voucher";
-    string private constant SIGNATURE_VERSION = "1";
-    string public constant MASTER = "Master";
-    string public constant LICENSE = "License";
+    bytes32 internal constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    string internal constant SIGNING_DOMAIN = "SV-Voucher";
+    string internal constant SIGNATURE_VERSION = "1";
+    string internal constant MASTER = "Master";
+    string internal constant LICENSE = "License";
 
     // Mappings
     mapping(address => mapping(address => SellCount)) public sellCounts;

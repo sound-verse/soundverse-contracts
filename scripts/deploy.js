@@ -6,7 +6,6 @@ async function main() {
   const commonUtilsAddress = config.commonUtils;
   const percentageUtilsLibAddress = config.percentageUtilsLib;
 
-  console.log("Deploying Market contract")
   const MarketContract = await ethers.getContractFactory("MarketContract", {
     libraries: {
       PercentageUtils: percentageUtilsLibAddress,
@@ -30,6 +29,7 @@ async function main() {
   await master.deployed();
   console.log("Master deployed to:", master.address);
 
+  console.log("Deploying Market contract")
   const marketContract = await MarketContract.deploy(commonUtilsAddress);
   await marketContract.deployed();
   console.log("NFT Market contract deployed to:", marketContract.address);
