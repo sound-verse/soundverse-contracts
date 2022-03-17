@@ -29,7 +29,6 @@ contract MarketContract is
     uint256 public _serviceFees;
 
     // Constants
-    bytes32 internal constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string internal constant SIGNING_DOMAIN = "SV-Voucher";
     string internal constant SIGNATURE_VERSION = "1";
     string internal constant MASTER = "Master";
@@ -45,10 +44,10 @@ contract MarketContract is
 
     // Events
     event Withdrawal(address _payee, uint256 _amount);
-    event UnlistedNFT(uint256 tokenId);
+    event UnlistedNFT(uint256 tokenId, address contractAddress);
 
     // Structs
-    struct MintVoucher {
+    struct NFTVoucher {
         address nftContractAddress;
         uint256 price;
         uint256 sellCount;
@@ -57,6 +56,7 @@ contract MarketContract is
         uint256 supply;
         bool isMaster;
         bytes signature;
+        string currency;
     }
 
     struct SellCount {
@@ -81,21 +81,20 @@ contract MarketContract is
     /**
      * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties
      * @param _buyer The address of the account which will receive the NFT upon success.
+     * @param _seller The address of the account which will sell the NFT upon success.
      * @param _amountToPurchase Amount of items to be purchased
      * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
      */
     function redeemItem(
         address _buyer,
+        address _seller,
         uint256 _amountToPurchase,
-        MintVoucher calldata _mintVoucher
+        NFTVoucher calldata _mintVoucher
     ) public payable nonReentrant {
         address _signer = _verify(_mintVoucher);
 
-        // make sure that the signer is authorized to mint NFTs
-        require(
-            hasRole(MINTER_ROLE, _signer),
-            "Signature invalid or unauthorized"
-        );
+        // make sure that the signer of the Voucher is the seller
+        require(_seller == _signer, "Signature invalid or unauthorized");
 
         uint256 purchaseFees = serviceFees();
 
@@ -176,7 +175,7 @@ contract MarketContract is
                 _amountToPurchase
             );
         }
-        incrementSellCount(_buyer, _mintVoucher.nftContractAddress, tokenId);
+        incrementSellCount(_mintVoucher.nftContractAddress, tokenId);
         withdrawFees(calculatedServiceFees);
     }
 
@@ -208,7 +207,7 @@ contract MarketContract is
         address _ownerAddress,
         address _nftContractAddress,
         uint256 _tokenId
-    ) private view returns (uint256) {
+    ) public view returns (uint256) {
         if (
             sellCounts[_ownerAddress][_nftContractAddress].tokenId == 0 ||
             sellCounts[_ownerAddress][_nftContractAddress].tokenId != _tokenId
@@ -220,35 +219,25 @@ contract MarketContract is
 
     /**
      * @dev Increments the sell count
-     * @param _ownerAddress Address of the NFT owner
      * @param _nftContractAddress Address of the NFT contract
      * @param _tokenId TokenId of the NFT
      */
-    function incrementSellCount(
-        address _ownerAddress,
-        address _nftContractAddress,
-        uint256 _tokenId
-    ) private {
-        if (
-            sellCounts[_ownerAddress][_nftContractAddress].tokenId == _tokenId
-        ) {
-            sellCounts[_ownerAddress][_nftContractAddress].sellCount += 1;
+    function incrementSellCount(address _nftContractAddress, uint256 _tokenId)
+        public
+    {
+        if (sellCounts[_msgSender()][_nftContractAddress].tokenId == _tokenId) {
+            sellCounts[_msgSender()][_nftContractAddress].sellCount += 1;
         }
     }
 
     /**
      * @dev Increments the sell count
-     * @param _ownerAddress Address of the NFT owner
      * @param _nftContractAddress Address of the NFT contract
      * @param _tokenId TokenId of the NFT
      */
-    function unlistItem(
-        address _ownerAddress,
-        address _nftContractAddress,
-        uint256 _tokenId
-    ) public {
-        incrementSellCount(_ownerAddress, _nftContractAddress, _tokenId);
-        emit UnlistedNFT(_tokenId);
+    function unlistItem(address _nftContractAddress, uint256 _tokenId) public {
+        incrementSellCount(_nftContractAddress, _tokenId);
+        emit UnlistedNFT(_tokenId, _nftContractAddress);
     }
 
     /**
@@ -280,9 +269,9 @@ contract MarketContract is
 
     /**
      * @notice Returns a hash of the given Voucher, prepared using EIP712 typed data hashing rules.
-     * @param voucher An MintVoucher to hash.
+     * @param voucher An NFTVoucher to hash.
      */
-    function _hash(MintVoucher calldata voucher)
+    function _hash(NFTVoucher calldata voucher)
         internal
         view
         returns (bytes32)
@@ -292,7 +281,7 @@ contract MarketContract is
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "MintVoucher(uint256 tokenId,uint256 minPrice,string uri)"
+                            "NFTVoucher(uint256 tokenId,uint256 minPrice,string uri)"
                         ),
                         voucher.tokenUri,
                         voucher.price,
@@ -320,7 +309,7 @@ contract MarketContract is
      * @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
      * @param voucher An Voucher describing an unminted or minted NFT.
      */
-    function _verify(MintVoucher calldata voucher)
+    function _verify(NFTVoucher calldata voucher)
         internal
         view
         returns (address)
