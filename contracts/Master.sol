@@ -28,7 +28,6 @@ contract Master is
 
     // Constants and variables
     bytes32 internal constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 internal constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string internal constant LICENSE = "License";
     uint256 internal constant MIN_SUPPLY = 2;
     Counters.Counter private _tokenIdTracker;
@@ -59,7 +58,6 @@ contract Master is
      * @param _creator Creator of the project
      */
     function setTokenCreator(uint256 tokenId, address _creator) internal {
-        _setupRole(MINTER_ROLE, _creator);
         _creators[tokenId] = _creator;
     }
 
