@@ -27,6 +27,9 @@ contract License is
 
     mapping(uint256 => string) public _uris;
 
+    // Events
+    event LicenseMintEvent(uint256 indexed id, string uri);
+
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE` and `PAUSER_ROLE` to the account that
      * deploys the contract.
@@ -98,6 +101,8 @@ contract License is
     ) private {
         setTokenUri(_currentLicenseBundleId, _mintURI);
         _mint(_signer, _currentLicenseBundleId, _amount, _erc721Reference);
+
+        emit LicenseMintEvent(_currentLicenseBundleId, _mintURI);
     }
 
     /**

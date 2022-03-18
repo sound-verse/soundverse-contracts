@@ -27,6 +27,7 @@ contract MarketContract is
     address payable internal admin;
     Counters.Counter private itemsSold;
     uint256 public _serviceFees;
+    uint256 public sellCount;
 
     // Constants
     string internal constant SIGNING_DOMAIN = "SV-Voucher";
@@ -35,7 +36,8 @@ contract MarketContract is
     string internal constant LICENSE = "License";
 
     // Mappings
-    mapping(address => mapping(address => SellCount)) public sellCounts;
+    mapping(address => mapping(address => mapping(uint256 => uint256)))
+        public sellCounts;
 
     //Contracts
     ICommonUtils public commonUtils;
@@ -57,11 +59,6 @@ contract MarketContract is
         bool isMaster;
         bytes signature;
         string currency;
-    }
-
-    struct SellCount {
-        uint256 tokenId;
-        uint256 sellCount;
     }
 
     // Constructor
@@ -130,10 +127,9 @@ contract MarketContract is
         );
 
         require(
-            sellCounts[_signer][_mintVoucher.nftContractAddress].tokenId ==
-                _mintVoucher.tokenId &&
-                _mintVoucher.sellCount ==
-                sellCounts[_signer][_mintVoucher.nftContractAddress].sellCount
+            sellCounts[_signer][_mintVoucher.nftContractAddress][
+                _mintVoucher.tokenId
+            ] == _mintVoucher.sellCount
         );
 
         // true -> Mint
@@ -208,13 +204,10 @@ contract MarketContract is
         address _nftContractAddress,
         uint256 _tokenId
     ) public view returns (uint256) {
-        if (
-            sellCounts[_ownerAddress][_nftContractAddress].tokenId == 0 ||
-            sellCounts[_ownerAddress][_nftContractAddress].tokenId != _tokenId
-        ) {
+        if (sellCounts[_ownerAddress][_nftContractAddress][_tokenId] == 0) {
             return 0;
         }
-        return sellCounts[_ownerAddress][_nftContractAddress].sellCount;
+        return sellCounts[_ownerAddress][_nftContractAddress][_tokenId];
     }
 
     /**
@@ -225,9 +218,7 @@ contract MarketContract is
     function incrementSellCount(address _nftContractAddress, uint256 _tokenId)
         public
     {
-        if (sellCounts[_msgSender()][_nftContractAddress].tokenId == _tokenId) {
-            sellCounts[_msgSender()][_nftContractAddress].sellCount += 1;
-        }
+        sellCounts[_msgSender()][_nftContractAddress][_tokenId] += 1;
     }
 
     /**
@@ -281,11 +272,16 @@ contract MarketContract is
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "NFTVoucher(uint256 tokenId,uint256 minPrice,string uri)"
+                            "NFTVoucher(address nftContractAddress, uint256 price, uint256 sellCount, string tokenUri, uint256 tokenId, uint256 supply, bool isMaster, bytes signature, string currency)"
                         ),
-                        voucher.tokenUri,
+                        voucher.nftContractAddress,
                         voucher.price,
-                        keccak256(bytes(voucher.tokenUri))
+                        voucher.sellCount,
+                        keccak256(bytes(voucher.tokenUri)),
+                        voucher.tokenId,
+                        voucher.supply,
+                        voucher.isMaster,
+                        keccak256(bytes(voucher.currency))
                     )
                 )
             );
