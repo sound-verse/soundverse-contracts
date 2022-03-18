@@ -281,11 +281,16 @@ contract MarketContract is
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "NFTVoucher(uint256 tokenId,uint256 minPrice,string uri)"
+                            "NFTVoucher(address nftContractAddress, uint256 price, uint256 sellCount, string tokenUri, uint256 tokenId, uint256 supply, bool isMaster, bytes signature, string currency)"
                         ),
-                        voucher.tokenUri,
+                        voucher.nftContractAddress,
                         voucher.price,
-                        keccak256(bytes(voucher.tokenUri))
+                        voucher.sellCount,
+                        keccak256(bytes(voucher.tokenUri)),
+                        voucher.tokenId,
+                        voucher.supply,
+                        voucher.isMaster,
+                        keccak256(bytes(voucher.currency))
                     )
                 )
             );
