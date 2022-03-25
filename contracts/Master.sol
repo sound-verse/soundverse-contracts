@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "hardhat/console.sol";
 
 contract Master is
     AccessControlEnumerable,
@@ -137,8 +138,9 @@ contract Master is
         string memory _mintURI,
         uint256 _amountToMint
     ) private returns (uint256) {
-        uint256 currentTokenId = _tokenIdTracker.current();
         _tokenIdTracker.increment();
+        uint256 currentTokenId = _tokenIdTracker.current();
+
         require(
             bytes(_uris[currentTokenId]).length == 0,
             "Cannot set URI twice"
@@ -158,6 +160,9 @@ contract Master is
             _amountToMint,
             commonUtils.toBytes(currentTokenId)
         );
+        console.log("CURRENT TOKEN ID =====", currentTokenId);
+        uint256 tokId = tokenIdForURI(_mintURI);
+        console.log("TOKEN ID FOR URI======", tokId);
 
         return currentTokenId;
     }
@@ -232,7 +237,7 @@ contract Master is
 
     modifier onlyMarketplace() {
         require(
-            msg.sender == commonUtils.getContractAddressFrom("Marketplace")
+            msg.sender == commonUtils.getContractAddressFrom("MarketContract")
         );
         _;
     }

@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "hardhat/console.sol";
 
 contract MarketContract is
     AccessControlEnumerable,
@@ -30,7 +31,7 @@ contract MarketContract is
     uint256 public sellCount;
 
     // Constants
-    string internal constant SIGNING_DOMAIN = "SV-Voucher";
+    string internal constant SIGNING_DOMAIN = "SVVoucher";
     string internal constant SIGNATURE_VERSION = "1";
     string internal constant MASTER = "Master";
     string internal constant LICENSE = "License";
@@ -88,6 +89,7 @@ contract MarketContract is
         uint256 _amountToPurchase,
         NFTVoucher calldata _mintVoucher
     ) public payable nonReentrant {
+        require(msg.value > 0, "No amount being transferred");
         address _signer = _verify(_mintVoucher);
 
         // make sure that the signer of the Voucher is the seller
@@ -121,6 +123,8 @@ contract MarketContract is
         );
 
         // make sure that the redeemer is paying enough to cover the buyer's cost
+        console.log("msg.sender: ", msg.sender);
+        console.log("msg.value: ", msg.value);
         require(
             msg.value >= purchasePriceWithServiceFee,
             "Insufficient funds to redeem"
@@ -141,8 +145,10 @@ contract MarketContract is
                 _mintVoucher.tokenUri,
                 _mintVoucher.supply
             );
+            console.log("Ich hab gerade eben gemintet");
         }
 
+        require(tokenId != 0, "NFT could not be minted");
         // Transfer NFTS
         uint256 licensesAmountFromSigner;
         if (_mintVoucher.isMaster == true) {
@@ -151,27 +157,32 @@ contract MarketContract is
 
             // Transfer master and license(s) to buyer
             masterContract.transferMaster(_signer, _buyer, tokenId);
-            licensesAmountFromSigner = licensesContract.balanceOf(
+            licensesAmountFromSigner = licensesContract.licensesBalanceOf(
                 _signer,
                 tokenId
             );
-            licensesContract._safeTransferFrom(
+            licensesContract.transferLicenses(
                 _signer,
                 _buyer,
                 tokenId,
                 licensesAmountFromSigner
             );
+            console.log("Just transferred a master with license!", _mintVoucher.price);
+            console.log("PURCHASE PRICE=", purchasePrice);
             itemsSold.increment();
         } else {
             // Transfer license(s) to buyer
-            licensesContract._safeTransferFrom(
+            licensesContract.transferLicenses(
                 _signer,
                 _buyer,
                 tokenId,
                 _amountToPurchase
             );
+            console.log("Just transferred a license!", _mintVoucher.price);
+            console.log("PURCHASE PRICE=", purchasePrice);
         }
         incrementSellCount(_mintVoucher.nftContractAddress, tokenId);
+        console.log("Calculated Services fees=", calculatedServiceFees);
         withdrawFees(calculatedServiceFees);
     }
 
@@ -272,7 +283,7 @@ contract MarketContract is
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "NFTVoucher(address nftContractAddress, uint256 price, uint256 sellCount, string tokenUri, uint256 tokenId, uint256 supply, bool isMaster, bytes signature, string currency)"
+                            "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,bool isMaster,string currency)"
                         ),
                         voucher.nftContractAddress,
                         voucher.price,

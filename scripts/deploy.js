@@ -19,24 +19,22 @@ async function main() {
   const License = await ethers.getContractFactory("License");
   const license = await License.deploy(commonUtilsAddress);
   await license.deployed();
-  console.log("License deployed to:", license.address);
-
   await utils.setContractAddressFor("License", license.address);
+  console.log("License deployed to:", license.address);
 
   console.log("Deploying Master contract");
   const Master = await ethers.getContractFactory("Master");
   const master = await Master.deploy(commonUtilsAddress);
   await master.deployed();
+  await utils.setContractAddressFor("Master", master.address);
   console.log("Master deployed to:", master.address);
-
+  
   console.log("Deploying Market contract")
   const marketContract = await MarketContract.deploy(commonUtilsAddress);
   await marketContract.deployed();
-  console.log("NFT Market contract deployed to:", marketContract.address);
-
-  await utils.setContractAddressFor("Master", master.address);
   await utils.setContractAddressFor("MarketContract", marketContract.address);
-
+  console.log("NFT Market contract deployed to:", marketContract.address);
+  
 }
 
 main()

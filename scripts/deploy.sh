@@ -7,7 +7,7 @@ ENVIRONMENT=${2}
 
 echo "Deploying ${CONTRACT_TO_DEPLOY} to ${ENVIRONMENT}"
 
-if [[ "${CONTRACT_TO_DEPLOY}" == "all" ]] && [[ ! -z ${ENVIRONMENT} ]] ;
+if [[ "${CONTRACT_TO_DEPLOY}" == "contracts" ]] && [[ ! -z ${ENVIRONMENT} ]] ;
 then
     npx hardhat compile && npx hardhat run scripts/deploy.js --network "${ENVIRONMENT}"
 elif [[ "${CONTRACT_TO_DEPLOY}" == "utils" ]] && [[ ! -z ${ENVIRONMENT} ]] ;
@@ -19,6 +19,11 @@ then
 elif [[ "${CONTRACT_TO_DEPLOY}" == "libs" ]] && [[ ! -z ${ENVIRONMENT} ]] ;
 then
     npx hardhat compile && npx hardhat run scripts/deploy_libs.js --network "${ENVIRONMENT}"
+elif [[ "${CONTRACT_TO_DEPLOY}" == "dev" ]] && [[ ! -z ${ENVIRONMENT} ]] ;
+then
+    npx hardhat compile && npx hardhat run scripts/deploy_common_utils.js --network "${ENVIRONMENT}" &&
+    npx hardhat compile && npx hardhat run scripts/deploy_libs.js --network "${ENVIRONMENT}" &&
+    npx hardhat compile && npx hardhat run scripts/deploy.js --network "${ENVIRONMENT}"
 else
-    echo "Error:contract to deploy or environment missing"
+    echo "Error: Contract to deploy or environment missing"
 fi

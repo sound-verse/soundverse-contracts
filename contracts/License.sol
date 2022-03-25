@@ -72,9 +72,10 @@ contract License is
         string memory _mintURI,
         uint256 _amount,
         bytes memory _erc721Reference
-    ) public {
-        uint256 currentLicenseBundleId = _licenseBundleId.current();
+    ) public onlyMaster {
         _licenseBundleId.increment();
+        uint256 currentLicenseBundleId = _licenseBundleId.current();
+        
         mint(
             _signer,
             currentLicenseBundleId,
@@ -171,9 +172,22 @@ contract License is
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
-    modifier onlyMarketplace() {
+    modifier onlyMaster() {
         require(msg.sender == commonUtils.getContractAddressFrom("Master"));
         _;
+    }
+
+    function transferLicenses(
+        address _signer,
+        address _buyer,
+        uint256 _currentLicenseBundleId,
+        uint256 _amountToPurchase
+    ) public {
+        _safeTransferFrom(_signer, _buyer, _currentLicenseBundleId, _amountToPurchase, "0x");
+    }
+
+    function licensesBalanceOf(address account, uint256 id) public view returns(uint256){
+        return balanceOf(account, id);
     }
 
 }
