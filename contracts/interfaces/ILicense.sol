@@ -9,13 +9,13 @@ interface ILicense {
         bytes memory erc721Reference
     ) external;
 
-    function _safeTransferFrom(
+    function transferLicenses(
         address _signer,
         address _buyer,
         uint256 _currentLicenseBundleId,
         uint256 _amountToPurchase
     ) external;
 
-    function balanceOf(address account, uint256 id) external returns(uint256);
+    function licensesBalanceOf(address account, uint256 id) external returns(uint256);
 
 }
