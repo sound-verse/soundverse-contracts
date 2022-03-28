@@ -37,7 +37,7 @@ contract MarketContract is
     string internal constant LICENSE = "License";
 
     // Mappings
-    mapping(address => mapping(address => mapping(uint256 => uint256)))
+    mapping(address => mapping(address => mapping(string => uint256)))
         public sellCounts;
 
     //Contracts
@@ -47,7 +47,7 @@ contract MarketContract is
 
     // Events
     event Withdrawal(address _payee, uint256 _amount);
-    event UnlistedNFT(uint256 tokenId, address contractAddress);
+    event UnlistedNFT(string tokenUri, address contractAddress);
 
     // Structs
     struct NFTVoucher {
@@ -89,7 +89,8 @@ contract MarketContract is
         uint256 _amountToPurchase,
         NFTVoucher calldata _mintVoucher
     ) public payable nonReentrant {
-        require(msg.value > 0, "No amount being transferred");
+        uint256 totalPurchase = msg.value;
+        require(totalPurchase > 0, "No amount being transferred");
         address _signer = _verify(_mintVoucher);
 
         // make sure that the signer of the Voucher is the seller
@@ -104,7 +105,7 @@ contract MarketContract is
         );
 
         // Total amount to pay with service fees
-        uint256 purchasePriceWithServiceFee = 0;
+        uint256 purchasePriceWithServiceFee;
         if (_mintVoucher.isMaster == true) {
             purchasePriceWithServiceFee = calculateAmountToPay(
                 _mintVoucher.price,
@@ -121,19 +122,19 @@ contract MarketContract is
         uint256 purchasePrice = purchasePriceWithServiceFee.sub(
             calculatedServiceFees
         );
+        console.log("FEES=====", totalPurchase.sub(purchasePrice));
 
         // make sure that the redeemer is paying enough to cover the buyer's cost
-        console.log("msg.sender: ", msg.sender);
-        console.log("msg.value: ", msg.value);
         require(
-            msg.value >= purchasePriceWithServiceFee,
+            totalPurchase >= purchasePriceWithServiceFee,
             "Insufficient funds to redeem"
         );
 
         require(
             sellCounts[_signer][_mintVoucher.nftContractAddress][
-                _mintVoucher.tokenId
-            ] == _mintVoucher.sellCount
+                _mintVoucher.tokenUri
+            ] == _mintVoucher.sellCount,
+            "Signature not valid"
         );
 
         // true -> Mint
@@ -181,9 +182,8 @@ contract MarketContract is
             console.log("Just transferred a license!", _mintVoucher.price);
             console.log("PURCHASE PRICE=", purchasePrice);
         }
-        incrementSellCount(_mintVoucher.nftContractAddress, tokenId);
-        console.log("Calculated Services fees=", calculatedServiceFees);
-        withdrawFees(calculatedServiceFees);
+        incrementSellCount(_mintVoucher.nftContractAddress, _mintVoucher.tokenUri);
+        withdrawFees(totalPurchase.sub(purchasePrice));
     }
 
     /**
@@ -208,38 +208,40 @@ contract MarketContract is
     /**
      * @dev Gets the sell count if it exists, otherwise returns 0
      * @param _ownerAddress Address of the NFT owner
-     * @param _tokenId TokenId of the NFT
+     * @param _tokenUri TokenUri of the NFT
      */
     function getSellCount(
         address _ownerAddress,
         address _nftContractAddress,
-        uint256 _tokenId
+        string memory _tokenUri
     ) public view returns (uint256) {
-        if (sellCounts[_ownerAddress][_nftContractAddress][_tokenId] == 0) {
+        if (sellCounts[_ownerAddress][_nftContractAddress][_tokenUri] == 0) {
             return 0;
         }
-        return sellCounts[_ownerAddress][_nftContractAddress][_tokenId];
+        return sellCounts[_ownerAddress][_nftContractAddress][_tokenUri];
     }
 
     /**
      * @dev Increments the sell count
      * @param _nftContractAddress Address of the NFT contract
-     * @param _tokenId TokenId of the NFT
+     * @param _tokenUri TokenUri of the NFT
      */
-    function incrementSellCount(address _nftContractAddress, uint256 _tokenId)
-        public
+    function incrementSellCount(address _nftContractAddress, string memory _tokenUri)
+        private
     {
-        sellCounts[_msgSender()][_nftContractAddress][_tokenId] += 1;
+        sellCounts[_msgSender()][_nftContractAddress][_tokenUri] += 1;
     }
 
     /**
      * @dev Increments the sell count
      * @param _nftContractAddress Address of the NFT contract
-     * @param _tokenId TokenId of the NFT
+     * @param _tokenUri TokenUri of the NFT
      */
-    function unlistItem(address _nftContractAddress, uint256 _tokenId) public {
-        incrementSellCount(_nftContractAddress, _tokenId);
-        emit UnlistedNFT(_tokenId, _nftContractAddress);
+    function unlistItem(address _nftContractAddress, string memory _tokenUri) public {
+        console.log("UnlistMethod - SellCoiunt wird incremented", getSellCount(msg.sender, _nftContractAddress, _tokenUri));
+        incrementSellCount(_nftContractAddress, _tokenUri);
+        console.log("UnlistMethod - SellCoiunt wurde incremented", getSellCount(msg.sender, _nftContractAddress, _tokenUri));
+        emit UnlistedNFT(_tokenUri, _nftContractAddress);
     }
 
     /**
