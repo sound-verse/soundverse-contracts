@@ -5,6 +5,7 @@ settings.json
 package-lock.json
 package.json
 .env
+utils.config.json
 #Hardhat files
 cache
 artifacts
