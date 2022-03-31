@@ -14,7 +14,6 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "hardhat/console.sol";
 
 contract MarketContract is
   AccessControlEnumerable,
@@ -95,7 +94,7 @@ contract MarketContract is
     address _signer = _verify(_mintVoucher);
 
     // make sure that the signer of the Voucher is the seller
-    require(_seller == _signer, "Signature invalid or unauthorized");
+    require(_seller == _signer, "Signature invalid");
 
     uint256 purchaseFees = serviceFees();
 
@@ -123,7 +122,6 @@ contract MarketContract is
     uint256 purchasePrice = purchasePriceWithServiceFee.sub(
       calculatedServiceFees
     );
-    console.log("FEES=====", totalPurchase.sub(purchasePrice));
 
     // make sure that the redeemer is paying enough to cover the buyer's cost
     require(
@@ -147,7 +145,6 @@ contract MarketContract is
         _mintVoucher.tokenUri,
         _mintVoucher.maxSupply
       );
-      console.log("Ich hab gerade eben gemintet");
     }
 
     require(tokenId != 0, "NFT could not be minted");
@@ -169,11 +166,6 @@ contract MarketContract is
         tokenId,
         licensesAmountFromSigner
       );
-      console.log(
-        "Just transferred a master with license!",
-        _mintVoucher.price
-      );
-      console.log("PURCHASE PRICE=", purchasePrice);
       itemsSold.increment();
     } else {
       // Transfer license(s) to buyer
@@ -183,8 +175,6 @@ contract MarketContract is
         tokenId,
         _amountToPurchase
       );
-      console.log("Just transferred a license!", _mintVoucher.price);
-      console.log("PURCHASE PRICE=", purchasePrice);
     }
     incrementSellCount(_mintVoucher.nftContractAddress, _mintVoucher.tokenUri);
     withdrawFees(totalPurchase.sub(purchasePrice));
@@ -245,15 +235,7 @@ contract MarketContract is
   function unlistItem(address _nftContractAddress, string memory _tokenUri)
     public
   {
-    console.log(
-      "UnlistMethod - SellCoiunt wird incremented",
-      getSellCount(msg.sender, _nftContractAddress, _tokenUri)
-    );
     incrementSellCount(_nftContractAddress, _tokenUri);
-    console.log(
-      "UnlistMethod - SellCoiunt wurde incremented",
-      getSellCount(msg.sender, _nftContractAddress, _tokenUri)
-    );
     emit UnlistedNFT(_tokenUri, _nftContractAddress, msg.sender);
   }
 

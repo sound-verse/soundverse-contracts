@@ -167,7 +167,7 @@ contract License is
   }
 
   modifier onlyMaster() {
-    require(msg.sender == commonUtils.getContractAddressFrom("Master"));
+    require(msg.sender == commonUtils.getContractAddressFrom("Master"), "Not authorized - Master");
     _;
   }
 

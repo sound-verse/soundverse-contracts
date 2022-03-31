@@ -46,20 +46,16 @@ module.exports = {
       chainId: 31337
     },
     mumbai: {
+      chainId: 80001,
       url: process.env.MUMBAI_URL || "",
+      gasPrice: "auto",
       accounts: process.env.PRIVATE_KEY1 !== undefined ? [process.env.PRIVATE_KEY1, process.env.PRIVATE_KEY2] : [],
     },
     fuji: {
+      chainId: 43113,
       url: process.env.FUJI_URL || "",
       gasPrice: "auto",
-      chainId: 43113,
       accounts: [process.env.PRIVATE_KEY1]
-    },
-    avalanche: {
-      url: process.env.AVALANCHE_URL || "",
-      gasPrice: "auto",
-      chainId: 43114,
-      accounts: []
     }
   },
   paths: {

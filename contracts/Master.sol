@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "hardhat/console.sol";
 
 contract Master is
   AccessControlEnumerable,
@@ -157,10 +156,6 @@ contract Master is
       _amountToMint,
       commonUtils.toBytes(currentTokenId)
     );
-    console.log("CURRENT TOKEN ID =====", currentTokenId);
-    uint256 tokId = tokenIdForURI(_mintURI);
-    console.log("TOKEN ID FOR URI======", tokId);
-
     return currentTokenId;
   }
 
@@ -175,7 +170,7 @@ contract Master is
     address _buyer,
     uint256 _currentTokenId
   ) public {
-    _safeTransfer(_signer, _buyer, _currentTokenId, "0x");
+    safeTransferFrom(_signer, _buyer, _currentTokenId);
   }
 
   /**
@@ -247,7 +242,7 @@ contract Master is
   }
 
   modifier onlyMarketplace() {
-    require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"));
+    require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"), "Not authorized - Market");
     _;
   }
 }
