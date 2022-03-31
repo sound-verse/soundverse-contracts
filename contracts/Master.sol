@@ -170,7 +170,7 @@ contract Master is
     address _buyer,
     uint256 _currentTokenId
   ) public {
-    safeTransferFrom(_signer, _buyer, _currentTokenId);
+    _safeTransfer(_signer, _buyer, _currentTokenId, "");
   }
 
   /**
