@@ -177,7 +177,7 @@ contract MarketContract is
       );
     }
     incrementSellCount(_mintVoucher.nftContractAddress, _mintVoucher.tokenUri);
-    withdrawFees(totalPurchase.sub(purchasePrice));
+    withdrawFees(calculatedServiceFees);
   }
 
   /**
@@ -236,7 +236,7 @@ contract MarketContract is
     public
   {
     incrementSellCount(_nftContractAddress, _tokenUri);
-    emit UnlistedNFT(_tokenUri, _nftContractAddress, msg.sender);
+    emit UnlistedNFT(_tokenUri, _nftContractAddress, _msgSender());
   }
 
   /**

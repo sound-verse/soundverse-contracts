@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./interfaces/IMaster.sol";
 import "./interfaces/ILicense.sol";
 import "./CommonUtils.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -163,14 +162,14 @@ contract Master is
    * @dev Transfer Master
    * @param _signer From address
    * @param _buyer To address
-   * @param _currentTokenId ID of the token to be transferred
+   * @param _tokenId ID of the token to be transferred
    */
   function transferMaster(
     address _signer,
     address _buyer,
-    uint256 _currentTokenId
+    uint256 _tokenId
   ) public {
-    _safeTransfer(_signer, _buyer, _currentTokenId, "");
+    _safeTransfer(_signer, _buyer, _tokenId, "");
   }
 
   /**

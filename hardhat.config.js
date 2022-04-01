@@ -22,7 +22,15 @@ if(config.error){
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.4",
+  solidity: {
+    version: "0.8.4",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
   networks: {      
     local: {
       url: 'http://127.0.0.1:8545/ext/bc/C/rpc',
@@ -47,14 +55,20 @@ module.exports = {
     },
     mumbai: {
       chainId: 80001,
-      url: process.env.MUMBAI_URL || "",
       gasPrice: "auto",
-      accounts: process.env.PRIVATE_KEY1 !== undefined ? [process.env.PRIVATE_KEY1, process.env.PRIVATE_KEY2] : [],
+      url: "https://rpc-mumbai.maticvigil.com/v1/14f307d73c91cd84b80ce7c71643bfde9b9c92ea",
+      accounts: [process.env.PRIVATE_KEY1]
     },
     fuji: {
       chainId: 43113,
-      url: process.env.FUJI_URL || "",
       gasPrice: "auto",
+      url: process.env.FUJI_URL || "",
+      accounts: [process.env.PRIVATE_KEY1]
+    },
+    rinkeby: {
+      chainId: 4,
+      gasPrice: "auto",
+      url: "https://rinkeby.infura.io/v3/18ba14d06a5b4798ac4bda603571cc17",
       accounts: [process.env.PRIVATE_KEY1]
     }
   },
