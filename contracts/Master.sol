@@ -40,8 +40,13 @@ contract Master is
    */
   constructor(address _commonUtilsAddress) ERC721("SoundVerseMaster", "SVM") {
     _setupRole(PAUSER_ROLE, _msgSender());
-
     commonUtils = ICommonUtils(_commonUtilsAddress);
+  }
+
+  /**
+   * @dev Initializes the contracts with respective interfaces
+   */
+  function initializeContracts() internal {
     address licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
     licensesContract = ILicense(licenseAddress);
   }
@@ -149,6 +154,8 @@ contract Master is
     setTokenIDForURI(currentTokenId, _mintURI);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
+    initializeContracts();
+
     licensesContract.mintLicenses(
       _signer,
       _mintURI,
@@ -241,7 +248,7 @@ contract Master is
   }
 
   modifier onlyMarketplace() {
-    require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"), "Not authorized - Market");
+    require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"));
     _;
   }
 }

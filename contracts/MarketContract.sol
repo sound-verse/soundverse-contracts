@@ -68,8 +68,13 @@ contract MarketContract is
   {
     admin = payable(owner());
     _serviceFees = 3000;
-
     commonUtils = ICommonUtils(_commonUtilsAddress);
+  }
+
+  /**
+   * @dev Initializes the contracts with respective interfaces
+   */
+  function initializeContracts() internal {
     address licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
     address masterAddress = commonUtils.getContractAddressFrom(MASTER);
     licensesContract = ILicense(licenseAddress);
@@ -135,6 +140,8 @@ contract MarketContract is
       ] == _mintVoucher.sellCount,
       "Signature not valid"
     );
+
+    initializeContracts();
 
     // true -> Mint
     // false -> Purchase
@@ -224,7 +231,8 @@ contract MarketContract is
     address _nftContractAddress,
     string memory _tokenUri
   ) private {
-    sellCounts[_msgSender()][_nftContractAddress][_tokenUri] += 1;
+    address sender = _msgSender();
+    sellCounts[sender][_nftContractAddress][_tokenUri] += 1;
   }
 
   /**
@@ -235,8 +243,9 @@ contract MarketContract is
   function unlistItem(address _nftContractAddress, string memory _tokenUri)
     public
   {
+    address sender = _msgSender();
     incrementSellCount(_nftContractAddress, _tokenUri);
-    emit UnlistedNFT(_tokenUri, _nftContractAddress, _msgSender());
+    emit UnlistedNFT(_tokenUri, _nftContractAddress, sender);
   }
 
   /**

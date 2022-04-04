@@ -55,9 +55,11 @@ module.exports = {
     },
     mumbai: {
       chainId: 80001,
-      gasPrice: "auto",
-      url: "https://rpc-mumbai.maticvigil.com/v1/14f307d73c91cd84b80ce7c71643bfde9b9c92ea",
-      accounts: [process.env.PRIVATE_KEY1]
+      gasMultiplier: 10,
+      gas: 8000000,
+      url: process.env.MUMBAI_URL || "",
+      // url: "https://rpc-mumbai.maticvigil.com/v1/14f307d73c91cd84b80ce7c71643bfde9b9c92ea",
+      accounts: [process.env.PRIVATE_KEY2]
     },
     fuji: {
       chainId: 43113,
