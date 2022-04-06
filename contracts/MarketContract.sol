@@ -183,7 +183,11 @@ contract MarketContract is
         _amountToPurchase
       );
     }
-    incrementSellCount(_mintVoucher.nftContractAddress, _mintVoucher.tokenUri);
+    incrementSellCount(
+      _signer,
+      _mintVoucher.nftContractAddress,
+      _mintVoucher.tokenUri
+    );
     withdrawFees(calculatedServiceFees);
   }
 
@@ -228,11 +232,11 @@ contract MarketContract is
    * @param _tokenUri TokenUri of the NFT
    */
   function incrementSellCount(
+    address _sender,
     address _nftContractAddress,
     string memory _tokenUri
   ) private {
-    address sender = _msgSender();
-    sellCounts[sender][_nftContractAddress][_tokenUri] += 1;
+    sellCounts[_sender][_nftContractAddress][_tokenUri] += 1;
   }
 
   /**
@@ -243,9 +247,9 @@ contract MarketContract is
   function unlistItem(address _nftContractAddress, string memory _tokenUri)
     public
   {
-    address sender = _msgSender();
-    incrementSellCount(_nftContractAddress, _tokenUri);
-    emit UnlistedNFT(_tokenUri, _nftContractAddress, sender);
+    address _sender = _msgSender();
+    incrementSellCount(_sender, _nftContractAddress, _tokenUri);
+    emit UnlistedNFT(_tokenUri, _nftContractAddress, _sender);
   }
 
   /**
