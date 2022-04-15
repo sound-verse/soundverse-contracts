@@ -11,12 +11,14 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 contract Master is
   AccessControlEnumerable,
   ERC721URIStorage,
   Pausable,
-  Ownable
+  Ownable,
+  ERC2981
 {
   using SafeMath for uint256;
   using Counters for Counters.Counter;
@@ -30,6 +32,7 @@ contract Master is
   string internal constant LICENSE = "License";
   uint256 internal constant MIN_SUPPLY = 2;
   Counters.Counter private _tokenIdTracker;
+  address[] public creatorArray;
 
   // Events
   event MasterMintEvent(uint256 indexed id, string uri);
@@ -54,7 +57,7 @@ contract Master is
   /**
    * @dev Project creator mapping
    */
-  mapping(uint256 => address) public _creators;
+  mapping(uint256 => address[]) public _creators;
 
   /**
    * @dev Sets token creator for token type `id`.
@@ -62,14 +65,35 @@ contract Master is
    * @param _creator Creator of the project
    */
   function setTokenCreator(uint256 tokenId, address _creator) internal {
-    _creators[tokenId] = _creator;
+    creatorArray.push(_creator);
+    _creators[tokenId] = creatorArray;
+  }
+
+  /**
+   * @dev Sets token creators for token type `id`.
+   * @param tokenId token ID receiving the creator
+   * @param _creatorsArray Creator of the project
+   */
+  function setTokenCreators(uint256 tokenId, address[] memory _creatorsArray)
+    public
+    onlyOwner
+  {
+    _creators[tokenId] = _creatorsArray;
+  }
+
+  function cleanUpCreators() public {
+    //clean up array after assigning creators
+    for (uint256 i = 1; i <= creatorArray.length; i++) {
+      delete creatorArray[i];
+      i++;
+    }
   }
 
   /**
    * @param tokenId token ID receiving the creator
    * @return address from creator of the project
    */
-  function creator(uint256 tokenId) internal view returns (address) {
+  function creators(uint256 tokenId) internal view returns (address[] storage) {
     return _creators[tokenId];
   }
 
@@ -116,16 +140,23 @@ contract Master is
    * @param _signer address of creator
    * @param tokenURI URI of the song to be minted
    * @param _licensesAmount amount of licenses to mint linked to the Master NFT
+   * @param _royaltyFeesInBeeps Percentage of royalty fees for creator
    * Finally approves the Marketplace to handle the Master
    */
   function createMasterItem(
     address _signer,
     string memory tokenURI,
-    uint256 _licensesAmount
+    uint256 _licensesAmount,
+    uint96 _royaltyFeesInBeeps
   ) public onlyMarketplace returns (uint256) {
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
     require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
-    uint256 tokenId = mintItem(_signer, tokenURI, _licensesAmount);
+    uint256 tokenId = mintItem(
+      _signer,
+      tokenURI,
+      _licensesAmount,
+      _royaltyFeesInBeeps
+    );
 
     return tokenId;
   }
@@ -135,11 +166,13 @@ contract Master is
    * @param _signer address of creator
    * @param _mintURI URI of the song to be minted
    * @param _amountToMint amount of licenses to mint linked to the Master NFT
+   * @param _royaltyFeesInBeeps Percentage of royalty fees for creator
    */
   function mintItem(
     address _signer,
     string memory _mintURI,
-    uint256 _amountToMint
+    uint256 _amountToMint,
+    uint96 _royaltyFeesInBeeps
   ) private returns (uint256) {
     _tokenIdTracker.increment();
     uint256 currentTokenId = _tokenIdTracker.current();
@@ -148,10 +181,12 @@ contract Master is
 
     // Creator in mapping speichern anhand tokenId
     setTokenCreator(currentTokenId, _signer);
+    cleanUpCreators();
 
     _safeMint(_signer, currentTokenId);
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
+    setRoyaltyFees(currentTokenId, _signer, _royaltyFeesInBeeps);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
@@ -160,7 +195,8 @@ contract Master is
       _signer,
       _mintURI,
       _amountToMint,
-      commonUtils.toBytes(currentTokenId)
+      commonUtils.toBytes(currentTokenId),
+      _royaltyFeesInBeeps
     );
     return currentTokenId;
   }
@@ -230,7 +266,7 @@ contract Master is
     public
     view
     virtual
-    override(AccessControlEnumerable, ERC721)
+    override(AccessControlEnumerable, ERC721, ERC2981)
     returns (bool)
   {
     return super.supportsInterface(interfaceId);
@@ -250,5 +286,13 @@ contract Master is
   modifier onlyMarketplace() {
     require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"));
     _;
+  }
+
+  function setRoyaltyFees(
+    uint256 _tokenId,
+    address _receiver,
+    uint96 _royaltyFeesInBeeps
+  ) public onlyMarketplace {
+    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeesInBeeps);
   }
 }

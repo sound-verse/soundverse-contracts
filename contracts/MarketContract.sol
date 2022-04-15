@@ -60,6 +60,7 @@ contract MarketContract is
     bool isMaster;
     bytes signature;
     string currency;
+    uint96 royaltyFeeInBeeps;
   }
 
   // Constructor
@@ -150,7 +151,8 @@ contract MarketContract is
       tokenId = masterContract.createMasterItem(
         _signer,
         _mintVoucher.tokenUri,
-        _mintVoucher.maxSupply
+        _mintVoucher.maxSupply,
+        _mintVoucher.royaltyFeeInBeeps
       );
     }
 
@@ -287,7 +289,7 @@ contract MarketContract is
         keccak256(
           abi.encode(
             keccak256(
-              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency)"
+              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeesInBeeps)"
             ),
             voucher.nftContractAddress,
             voucher.price,
@@ -297,7 +299,8 @@ contract MarketContract is
             voucher.supply,
             voucher.maxSupply,
             voucher.isMaster,
-            keccak256(bytes(voucher.currency))
+            keccak256(bytes(voucher.currency)),
+            voucher.royaltyFeeInBeeps
           )
         )
       );
