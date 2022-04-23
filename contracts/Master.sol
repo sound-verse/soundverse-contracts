@@ -140,14 +140,14 @@ contract Master is
    * @param _signer address of creator
    * @param tokenURI URI of the song to be minted
    * @param _licensesAmount amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeesInBeeps Percentage of royalty fees for creator
+   * @param _royaltyFeeInBeeps Percentage of royalty fees for creator
    * Finally approves the Marketplace to handle the Master
    */
   function createMasterItem(
     address _signer,
     string memory tokenURI,
     uint256 _licensesAmount,
-    uint96 _royaltyFeesInBeeps
+    uint96 _royaltyFeeInBeeps
   ) public onlyMarketplace returns (uint256) {
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
     require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
@@ -155,7 +155,7 @@ contract Master is
       _signer,
       tokenURI,
       _licensesAmount,
-      _royaltyFeesInBeeps
+      _royaltyFeeInBeeps
     );
 
     return tokenId;
@@ -166,13 +166,13 @@ contract Master is
    * @param _signer address of creator
    * @param _mintURI URI of the song to be minted
    * @param _amountToMint amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeesInBeeps Percentage of royalty fees for creator
+   * @param _royaltyFeeInBeeps Percentage of royalty fees for creator
    */
   function mintItem(
     address _signer,
     string memory _mintURI,
     uint256 _amountToMint,
-    uint96 _royaltyFeesInBeeps
+    uint96 _royaltyFeeInBeeps
   ) private returns (uint256) {
     _tokenIdTracker.increment();
     uint256 currentTokenId = _tokenIdTracker.current();
@@ -186,7 +186,7 @@ contract Master is
     _safeMint(_signer, currentTokenId);
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
-    setRoyaltyFees(currentTokenId, _signer, _royaltyFeesInBeeps);
+    setRoyaltyFees(currentTokenId, _signer, _royaltyFeeInBeeps);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
@@ -196,7 +196,7 @@ contract Master is
       _mintURI,
       _amountToMint,
       commonUtils.toBytes(currentTokenId),
-      _royaltyFeesInBeeps
+      _royaltyFeeInBeeps
     );
     return currentTokenId;
   }
@@ -291,8 +291,8 @@ contract Master is
   function setRoyaltyFees(
     uint256 _tokenId,
     address _receiver,
-    uint96 _royaltyFeesInBeeps
+    uint96 _royaltyFeeInBeeps
   ) public onlyMarketplace {
-    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeesInBeeps);
+    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBeeps);
   }
 }

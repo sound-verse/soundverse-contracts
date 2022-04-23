@@ -67,19 +67,19 @@ contract License is
    * @param _mintURI URI of the song
    * @param _amount amount of licenses to be created
    * @param _erc721Reference reference of the Master NFT
-   * @param _royaltyFeesInBeeps Percentage of royalty fees for creator
+   * @param _royaltyFeeInBeeps Percentage of royalty fees for creator
    */
   function mintLicenses(
     address _signer,
     string memory _mintURI,
     uint256 _amount,
     bytes memory _erc721Reference,
-    uint96 _royaltyFeesInBeeps
+    uint96 _royaltyFeeInBeeps
   ) public onlyMaster {
     _licenseBundleId.increment();
     uint256 currentLicenseBundleId = _licenseBundleId.current();
 
-    mint(_signer, currentLicenseBundleId, _mintURI, _amount, _erc721Reference, _royaltyFeesInBeeps);
+    mint(_signer, currentLicenseBundleId, _mintURI, _amount, _erc721Reference, _royaltyFeeInBeeps);
   }
 
   /**
@@ -89,7 +89,7 @@ contract License is
    * @param _mintURI URI of the song
    * @param _amount amount of licenses to be created
    * @param _erc721Reference reference of the Master NFT
-   * @param _royaltyFeesInBeeps Percentage of royalty fees for creator
+   * @param _royaltyFeeInBeeps Percentage of royalty fees for creator
    */
   function mint(
     address _signer,
@@ -97,10 +97,10 @@ contract License is
     string memory _mintURI,
     uint256 _amount,
     bytes memory _erc721Reference,
-    uint96 _royaltyFeesInBeeps
+    uint96 _royaltyFeeInBeeps
   ) private {
     setTokenUri(_currentLicenseBundleId, _mintURI);
-    setRoyaltyFees(_currentLicenseBundleId, _signer, _royaltyFeesInBeeps);
+    setRoyaltyFees(_currentLicenseBundleId, _signer, _royaltyFeeInBeeps);
     _mint(_signer, _currentLicenseBundleId, _amount, _erc721Reference);
 
     emit LicenseMintEvent(_currentLicenseBundleId, _mintURI);
@@ -212,10 +212,10 @@ contract License is
     return balanceOf(_account, _tokenId);
   }
 
-  function setRoyaltyFees(uint256 _tokenId, address _receiver, uint96 _royaltyFeesInBeeps)
+  function setRoyaltyFees(uint256 _tokenId, address _receiver, uint96 _royaltyFeeInBeeps)
     public
     onlyMaster
   {
-    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeesInBeeps);
+    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBeeps);
   }
 }

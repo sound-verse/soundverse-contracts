@@ -7,7 +7,7 @@ interface ILicense {
         string memory mintURI,
         uint256 amount,
         bytes memory erc721Reference,
-        uint96 _royaltyFeesInBeeps
+        uint96 _royaltyFeeInBeeps
     ) external;
 
     function transferLicenses(
