@@ -5,7 +5,8 @@ interface IMaster {
     function createMasterItem(
         address signer,
         string memory tokenURI,
-        uint256 licensesAmount
+        uint256 licensesAmount,
+        uint96 _royaltyFeeInBeeps
     ) external returns (uint256);
 
     function transferMaster(

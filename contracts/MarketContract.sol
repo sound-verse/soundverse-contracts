@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "hardhat/console.sol";
 
 contract MarketContract is
   AccessControlEnumerable,
@@ -60,6 +61,7 @@ contract MarketContract is
     bool isMaster;
     bytes signature;
     string currency;
+    uint96 royaltyFeeInBeeps;
   }
 
   // Constructor
@@ -94,6 +96,7 @@ contract MarketContract is
     uint256 _amountToPurchase,
     NFTVoucher calldata _mintVoucher
   ) public payable nonReentrant {
+    console.log("REDEEMITEM STARTING....");
     uint256 totalPurchase = msg.value;
     require(totalPurchase > 0, "No amount being transferred");
     address _signer = _verify(_mintVoucher);
@@ -147,10 +150,12 @@ contract MarketContract is
     // false -> Purchase
     uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
     if (tokenId == 0) {
+      console.log("CREATE MASTER ITEM about to be called....");
       tokenId = masterContract.createMasterItem(
         _signer,
         _mintVoucher.tokenUri,
-        _mintVoucher.maxSupply
+        _mintVoucher.maxSupply,
+        _mintVoucher.royaltyFeeInBeeps
       );
     }
 
@@ -287,7 +292,7 @@ contract MarketContract is
         keccak256(
           abi.encode(
             keccak256(
-              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency)"
+              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeeInBeeps)"
             ),
             voucher.nftContractAddress,
             voucher.price,
@@ -297,7 +302,8 @@ contract MarketContract is
             voucher.supply,
             voucher.maxSupply,
             voucher.isMaster,
-            keccak256(bytes(voucher.currency))
+            keccak256(bytes(voucher.currency)),
+            voucher.royaltyFeeInBeeps
           )
         )
       );

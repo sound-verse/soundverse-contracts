@@ -6,7 +6,8 @@ interface ILicense {
         address signer,
         string memory mintURI,
         uint256 amount,
-        bytes memory erc721Reference
+        bytes memory erc721Reference,
+        uint96 _royaltyFeeInBeeps
     ) external;
 
     function transferLicenses(
