@@ -6,7 +6,7 @@ interface IMaster {
         address signer,
         string memory tokenURI,
         uint256 licensesAmount,
-        uint96 _royaltyFeeInBeeps
+        uint96 _royaltyFeeInBips
     ) external returns (uint256);
 
     function transferMaster(

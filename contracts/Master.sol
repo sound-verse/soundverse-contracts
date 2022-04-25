@@ -85,7 +85,7 @@ contract Master is
   function cleanUpCreators() public {
     //clean up array after assigning creators
     console.log("Cleanup Creators called....");
-    for (uint256 i = 1; i <= creatorArray.length; i++) {
+    for (uint256 i = 0; i < creatorArray.length; i++) {
       delete creatorArray[i];
       i++;
     }
@@ -142,14 +142,14 @@ contract Master is
    * @param _signer address of creator
    * @param tokenURI URI of the song to be minted
    * @param _licensesAmount amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeeInBeeps Percentage of royalty fees for creator
+   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    * Finally approves the Marketplace to handle the Master
    */
   function createMasterItem(
     address _signer,
     string memory tokenURI,
     uint256 _licensesAmount,
-    uint96 _royaltyFeeInBeeps
+    uint96 _royaltyFeeInBips
   ) public onlyMarketplace returns (uint256) {
     console.log("CREATE MASTER ITEM starting....");
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
@@ -159,7 +159,7 @@ contract Master is
       _signer,
       tokenURI,
       _licensesAmount,
-      _royaltyFeeInBeeps
+      _royaltyFeeInBips
     );
 
     return tokenId;
@@ -170,13 +170,13 @@ contract Master is
    * @param _signer address of creator
    * @param _mintURI URI of the song to be minted
    * @param _amountToMint amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeeInBeeps Percentage of royalty fees for creator
+   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    */
   function mintItem(
     address _signer,
     string memory _mintURI,
     uint256 _amountToMint,
-    uint96 _royaltyFeeInBeeps
+    uint96 _royaltyFeeInBips
   ) private returns (uint256) {
     console.log("MINTITEM STARTING....");
     _tokenIdTracker.increment();
@@ -193,7 +193,7 @@ contract Master is
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
     console.log("setRoyaltyFees about to be called....");
-    setRoyaltyFees(currentTokenId, _signer, _royaltyFeeInBeeps);
+    setRoyaltyFees(currentTokenId, _signer, _royaltyFeeInBips);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
@@ -204,7 +204,7 @@ contract Master is
       _mintURI,
       _amountToMint,
       commonUtils.toBytes(currentTokenId),
-      _royaltyFeeInBeeps
+      _royaltyFeeInBips
     );
     return currentTokenId;
   }
@@ -299,8 +299,8 @@ contract Master is
   function setRoyaltyFees(
     uint256 _tokenId,
     address _receiver,
-    uint96 _royaltyFeeInBeeps
+    uint96 _royaltyFeeInBips
   ) internal {
-    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBeeps);
+    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBips);
   }
 }
