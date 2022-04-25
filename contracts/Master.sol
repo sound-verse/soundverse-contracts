@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "hardhat/console.sol";
 
 contract Master is
   AccessControlEnumerable,
@@ -83,6 +84,7 @@ contract Master is
 
   function cleanUpCreators() public {
     //clean up array after assigning creators
+    console.log("Cleanup Creators called....");
     for (uint256 i = 1; i <= creatorArray.length; i++) {
       delete creatorArray[i];
       i++;
@@ -149,8 +151,10 @@ contract Master is
     uint256 _licensesAmount,
     uint96 _royaltyFeeInBeeps
   ) public onlyMarketplace returns (uint256) {
+    console.log("CREATE MASTER ITEM starting....");
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
     require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
+    console.log("MINTITEM about to be called....");
     uint256 tokenId = mintItem(
       _signer,
       tokenURI,
@@ -174,6 +178,7 @@ contract Master is
     uint256 _amountToMint,
     uint96 _royaltyFeeInBeeps
   ) private returns (uint256) {
+    console.log("MINTITEM STARTING....");
     _tokenIdTracker.increment();
     uint256 currentTokenId = _tokenIdTracker.current();
 
@@ -181,16 +186,19 @@ contract Master is
 
     // Creator in mapping speichern anhand tokenId
     setTokenCreator(currentTokenId, _signer);
+    console.log("CleanupCreators about to be called....");
     cleanUpCreators();
 
     _safeMint(_signer, currentTokenId);
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
+    console.log("setRoyaltyFees about to be called....");
     setRoyaltyFees(currentTokenId, _signer, _royaltyFeeInBeeps);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
 
+    console.log("MINTLICENSES about to be called....");
     licensesContract.mintLicenses(
       _signer,
       _mintURI,
@@ -292,7 +300,7 @@ contract Master is
     uint256 _tokenId,
     address _receiver,
     uint96 _royaltyFeeInBeeps
-  ) public onlyMarketplace {
+  ) internal {
     _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBeeps);
   }
 }

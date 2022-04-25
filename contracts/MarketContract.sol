@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "hardhat/console.sol";
 
 contract MarketContract is
   AccessControlEnumerable,
@@ -95,6 +96,7 @@ contract MarketContract is
     uint256 _amountToPurchase,
     NFTVoucher calldata _mintVoucher
   ) public payable nonReentrant {
+    console.log("REDEEMITEM STARTING....");
     uint256 totalPurchase = msg.value;
     require(totalPurchase > 0, "No amount being transferred");
     address _signer = _verify(_mintVoucher);
@@ -148,6 +150,7 @@ contract MarketContract is
     // false -> Purchase
     uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
     if (tokenId == 0) {
+      console.log("CREATE MASTER ITEM about to be called....");
       tokenId = masterContract.createMasterItem(
         _signer,
         _mintVoucher.tokenUri,
