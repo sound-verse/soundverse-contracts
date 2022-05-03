@@ -303,4 +303,8 @@ contract Master is
   ) internal {
     _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBips);
   }
+
+  function royaltyInfo(uint256 _tokenId, uint256 _salePrice) public override view returns (address, uint256) {
+    return royaltyInfo(_tokenId, _salePrice);
+  }
 }

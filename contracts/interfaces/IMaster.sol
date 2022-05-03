@@ -16,4 +16,6 @@ interface IMaster {
     ) external;
 
     function tokenIdForURI(string memory _uri) external returns (uint256);
+
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external returns (address, uint256);
 }

@@ -97,6 +97,139 @@ contract MarketContract is
     NFTVoucher calldata _mintVoucher
   ) public payable nonReentrant {
     console.log("REDEEMITEM STARTING....");
+
+    uint256 purchasePrice;
+    address _signer;
+
+    (purchasePrice, _signer) = approvePurchase(
+      _seller,
+      _amountToPurchase,
+      _mintVoucher
+    );
+
+    initializeContracts();
+
+    // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
+    uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
+    if (tokenId == 0) {
+      console.log("CREATE MASTER ITEM about to be called....");
+      tokenId = masterContract.createMasterItem(
+        _signer,
+        _mintVoucher.tokenUri,
+        _mintVoucher.maxSupply,
+        _mintVoucher.royaltyFeeInBips
+      );
+    }
+
+    payAndTransfer(
+      tokenId,
+      _buyer,
+      _signer,
+      purchasePrice,
+      _amountToPurchase,
+      _mintVoucher.isMaster
+    );
+
+    incrementSellCount(
+      _signer,
+      _mintVoucher.nftContractAddress,
+      _mintVoucher.tokenUri
+    );
+
+    uint256 calculatedServiceFees = calculateServiceFees(
+      _mintVoucher.price,
+      serviceFees()
+    );
+
+    withdrawFees(calculatedServiceFees);
+  }
+
+  /**
+   * @dev Function to purchase already minted Master or Licenses
+   * @param _buyer The address of the account which will receive the NFT upon success.
+   * @param _seller The address of the account which will sell the NFT upon success.
+   * @param _amountToPurchase Amount of items to be purchased
+   * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
+   */
+  function purchaseNFT(
+    address _buyer,
+    address _seller,
+    uint256 _amountToPurchase,
+    NFTVoucher calldata _mintVoucher
+  ) public payable nonReentrant {
+    console.log("PURCHASENFT STARTING....");
+
+    uint256 purchasePrice;
+    address _signer;
+
+    (purchasePrice, _signer) = approvePurchase(
+      _seller,
+      _amountToPurchase,
+      _mintVoucher
+    );
+
+    initializeContracts();
+
+    console.log("PURCHASENFT: Royalty Info STARTING....");
+    address receiver;
+    uint256 royalties;
+    if (_mintVoucher.isMaster == true) {
+      (receiver, royalties) = masterContract.royaltyInfo(
+        _mintVoucher.tokenId,
+        _mintVoucher.price
+      );
+    } else {
+      (receiver, royalties) = masterContract.royaltyInfo(
+        _mintVoucher.tokenId,
+        _mintVoucher.price
+      );
+    }
+
+    uint256 purchasePriceWithoutRoyalties = purchasePrice.sub(royalties);
+    console.log("purchasePrice: ", purchasePrice);
+    console.log("roxyalties: ", royalties);
+    console.log("purchasePriceWithoutRoyalties: ", purchasePriceWithoutRoyalties);
+
+    console.log(": transferring royalties STARTING....");
+    payable(receiver).transfer(royalties);
+    
+    console.log("PURCHASENFT: payAndTransfer STARTING....");
+    payAndTransfer(
+      _mintVoucher.tokenId,
+      _buyer,
+      _signer,
+      purchasePriceWithoutRoyalties,
+      _amountToPurchase,
+      _mintVoucher.isMaster
+    );
+
+    console.log("PURCHASENFT: incrementSellCount STARTING....");
+    incrementSellCount(
+      _signer,
+      _mintVoucher.nftContractAddress,
+      _mintVoucher.tokenUri
+    );
+
+    uint256 calculatedServiceFees = calculateServiceFees(
+      _mintVoucher.price,
+      serviceFees()
+    );
+
+    console.log("PURCHASENFT: withdrawFees STARTING....");
+    withdrawFees(calculatedServiceFees);
+  }
+
+  /**
+   * @dev Monetary checklist for purchasing NFTs, will return purchase price
+   * @param _seller The address of the account which will sell the NFT upon success.
+   * @param _amountToPurchase Amount of items to be purchased
+   * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
+   */
+  function approvePurchase(
+    address _seller,
+    uint256 _amountToPurchase,
+    NFTVoucher calldata _mintVoucher
+  ) internal returns (uint256, address) {
     uint256 totalPurchase = msg.value;
     require(totalPurchase > 0, "No amount being transferred");
     address _signer = _verify(_mintVoucher);
@@ -106,8 +239,7 @@ contract MarketContract is
 
     uint256 purchaseFees = serviceFees();
 
-    // Calculate fees and requires to pay services fees on top
-    uint256 calculatedServiceFees = PercentageUtils.percentageCalculatorDiv(
+    uint256 calculatedServiceFees = calculateServiceFees(
       _mintVoucher.price,
       purchaseFees
     );
@@ -144,38 +276,43 @@ contract MarketContract is
       "Signature not valid"
     );
 
-    initializeContracts();
+    return (purchasePrice, _signer);
+  }
 
-    // true -> Mint
-    // false -> Purchase
-    uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
-    if (tokenId == 0) {
-      console.log("CREATE MASTER ITEM about to be called....");
-      tokenId = masterContract.createMasterItem(
-        _signer,
-        _mintVoucher.tokenUri,
-        _mintVoucher.maxSupply,
-        _mintVoucher.royaltyFeeInBips
-      );
-    }
-
-    require(tokenId != 0, "NFT could not be minted");
+  /**
+   * @dev Sets payment and transferring of the NFT
+   * @param _tokenId TokenId of the NFT
+   * @param _buyer The address of the buyer of the NFT
+   * @param _signer The address of the account which will sell the NFT upon success
+   * @param _purchasePrice Price to be paid by the buyer
+   * @param _amountToPurchase Amount of items to be purchased
+   * @param _isMaster Is a Master nft or is a License
+   */
+  function payAndTransfer(
+    uint256 _tokenId,
+    address _buyer,
+    address _signer,
+    uint256 _purchasePrice,
+    uint256 _amountToPurchase,
+    bool _isMaster
+  ) internal {
+    require(_tokenId != 0, "NFT could not be minted");
     // Transfer NFTS
     uint256 licensesAmountFromSigner;
-    if (_mintVoucher.isMaster == true) {
+    if (_isMaster == true) {
       //transfer money to seller
-      payable(_signer).transfer(purchasePrice);
+      payable(_signer).transfer(_purchasePrice);
 
       // Transfer master and license(s) to buyer
-      masterContract.transferMaster(_signer, _buyer, tokenId);
+      masterContract.transferMaster(_signer, _buyer, _tokenId);
       licensesAmountFromSigner = licensesContract.licensesBalanceOf(
         _signer,
-        tokenId
+        _tokenId
       );
       licensesContract.transferLicenses(
         _signer,
         _buyer,
-        tokenId,
+        _tokenId,
         licensesAmountFromSigner
       );
       itemsSold.increment();
@@ -184,16 +321,24 @@ contract MarketContract is
       licensesContract.transferLicenses(
         _signer,
         _buyer,
-        tokenId,
+        _tokenId,
         _amountToPurchase
       );
     }
-    incrementSellCount(
-      _signer,
-      _mintVoucher.nftContractAddress,
-      _mintVoucher.tokenUri
-    );
-    withdrawFees(calculatedServiceFees);
+  }
+
+  /**
+   * @dev Calculates the services fees
+   * @param _mintVoucherPrice Price to be paid by the buyer
+   * @param purchaseFees Fees to be paid by the buyer
+   */
+  function calculateServiceFees(uint256 _mintVoucherPrice, uint256 purchaseFees)
+    internal
+    pure
+    returns (uint256)
+  {
+    return
+      PercentageUtils.percentageCalculatorDiv(_mintVoucherPrice, purchaseFees);
   }
 
   /**

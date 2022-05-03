@@ -19,4 +19,6 @@ interface ILicense {
 
     function licensesBalanceOf(address account, uint256 id) external returns(uint256);
 
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external returns (address, uint256);
+
 }
