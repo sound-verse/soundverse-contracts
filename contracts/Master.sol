@@ -33,7 +33,6 @@ contract Master is
   string internal constant LICENSE = "License";
   uint256 internal constant MIN_SUPPLY = 2;
   Counters.Counter private _tokenIdTracker;
-  address[] public creatorArray;
 
   // Events
   event MasterMintEvent(uint256 indexed id, string uri);
@@ -55,48 +54,85 @@ contract Master is
     licensesContract = ILicense(licenseAddress);
   }
 
+  // Creators and contributors *Master Royalties*
+  struct Contributor {
+    address contributorAddress;
+    uint96 royaltyFeeInBips;
+  }
+
+  Contributor[] public contributors;
+
   /**
    * @dev Project creator mapping
    */
-  mapping(uint256 => address[]) public _creators;
+  mapping(uint256 => Contributor[]) public _creatorsAndContributorsTemp;
+  mapping(uint256 => Contributor[]) public _creatorsAndContributors;
 
   /**
-   * @dev Sets token creator for token type `id`.
-   * @param tokenId token ID receiving the creator
-   * @param _creator Creator of the project
+   * @dev Sets token contributors for token type `id`.
+   * @param _tokenId token ID receiving the creator
+   * @param _contributorAddresses Address of contributor of the project
+   * @param _royaltyFeeInBips percentage of royalty for contributor of the project
    */
-  function setTokenCreator(uint256 tokenId, address _creator) internal {
-    creatorArray.push(_creator);
-    _creators[tokenId] = creatorArray;
-  }
+  function addContributorsToMaster(
+    uint256 _tokenId,
+    address[] memory _contributorAddresses,
+    uint96[] memory _royaltyFeeInBips
+  ) public {
+    uint96 totalPercentage = 0;
+    for (uint256 i = 0; i < _contributorAddresses.length; i++) {
+      Contributor memory newContributor = Contributor(
+        _contributorAddresses[i],
+        _royaltyFeeInBips[i]
+      );
 
-  /**
-   * @dev Sets token creators for token type `id`.
-   * @param tokenId token ID receiving the creator
-   * @param _creatorsArray Creator of the project
-   */
-  function setTokenCreators(uint256 tokenId, address[] memory _creatorsArray)
-    public
-    onlyOwner
-  {
-    _creators[tokenId] = _creatorsArray;
-  }
-
-  function cleanUpCreators() public {
-    //clean up array after assigning creators
-    console.log("Cleanup Creators called....");
-    for (uint256 i = 0; i < creatorArray.length; i++) {
-      delete creatorArray[i];
-      i++;
+      totalPercentage += _royaltyFeeInBips[i];
+      if (totalPercentage >= 100) {
+        require(
+          totalPercentage <= 100,
+          "Maximum percentage exceeded for royalties"
+        );
+      } else {
+        contributors.push(newContributor);
+      }
     }
+    _creatorsAndContributors[_tokenId] = contributors;
   }
 
   /**
-   * @param tokenId token ID receiving the creator
+   * @dev Sets token contributors from temp to original for token type `id`.
+   * @param _tokenId token ID receiving the creator
+   */
+  function setTokenContributors(uint256 _tokenId) internal {
+    Contributor[] storage contributorsToSet = _creatorsAndContributorsTemp[
+      _tokenId
+    ];
+    _creatorsAndContributors[_tokenId] = contributorsToSet;
+  }
+
+  /**
+   * @param _tokenId token ID receiving the creator
    * @return address from creator of the project
    */
-  function creators(uint256 tokenId) internal view returns (address[] storage) {
-    return _creators[tokenId];
+  function creators(uint256 _tokenId)
+    internal
+    view
+    returns (Contributor[] storage)
+  {
+    return _creatorsAndContributors[_tokenId];
+  }
+
+  function cleanUpContributorsTemp(uint256 _tokenId) public {
+    //clean up array after assigning creators
+    console.log("Cleanup Creators called....");
+    for (
+      uint256 i = 0;
+      i < _creatorsAndContributorsTemp[_tokenId].length;
+      i++
+    ) {
+      delete _creatorsAndContributorsTemp[i];
+      i++;
+    }
   }
 
   /**
@@ -111,11 +147,11 @@ contract Master is
 
   /**
    * @dev Returns the actual URI for TokenID.
-   * @param tokenId token ID to retrieve the uri from
+   * @param _tokenId token ID to retrieve the uri from
    * @return URI from token ID
    */
-  function uri(uint256 tokenId) public view returns (string memory) {
-    return (_uris[tokenId]);
+  function uri(uint256 _tokenId) public view returns (string memory) {
+    return (_uris[_tokenId]);
   }
 
   /**
@@ -184,16 +220,16 @@ contract Master is
 
     require(bytes(_uris[currentTokenId]).length == 0, "Cannot set URI twice");
 
-    // Creator in mapping speichern anhand tokenId
-    setTokenCreator(currentTokenId, _signer);
+    // Saves creator in mapping with tokenId
+    setTokenContributors(currentTokenId);
     console.log("CleanupCreators about to be called....");
-    cleanUpCreators();
+    cleanUpContributorsTemp(currentTokenId);
 
     _safeMint(_signer, currentTokenId);
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
     console.log("setRoyaltyFees about to be called....");
-    setRoyaltyFees(currentTokenId, _signer, _royaltyFeeInBips);
+    setRoyaltyFeesForContributors(currentTokenId);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
@@ -304,7 +340,23 @@ contract Master is
     _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBips);
   }
 
-  function royaltyInfo(uint256 _tokenId, uint256 _salePrice) public override view returns (address, uint256) {
+  function setRoyaltyFeesForContributors(uint256 _tokenId) internal {
+    Contributor[] storage contributorsForRoyalty = _creatorsAndContributorsTemp[_tokenId];
+    for (uint256 i = 0; i < contributorsForRoyalty.length; i++) {
+      _setTokenRoyalty(
+        _tokenId,
+        contributorsForRoyalty[i].contributorAddress,
+        contributorsForRoyalty[i].royaltyFeeInBips
+      );
+    }
+  }
+
+  function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
+    public
+    view
+    override
+    returns (address, uint256)
+  {
     return royaltyInfo(_tokenId, _salePrice);
   }
 }
