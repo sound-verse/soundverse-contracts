@@ -61,7 +61,21 @@ contract MarketContract is
     bool isMaster;
     bytes signature;
     string currency;
-    uint96 royaltyFeeInBips;
+    uint96 creatorRoyaltyFee;
+  }
+
+  // TODO() new voucher for secomndary sales
+  struct SecondarySaleVoucher {
+    address nftContractAddress;
+    uint256 price;
+    uint256 sellCount;
+    string tokenUri;
+    uint256 tokenId;
+    uint256 supply;
+    bool isMaster;
+    bytes signature;
+    address[] contributorAddresses;
+    uint96[] contributorRoyaltyFee;
   }
 
   // Constructor
@@ -112,9 +126,21 @@ contract MarketContract is
     // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
     uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
     if (tokenId == 0) {
-      sellItemOnPrimarySale(purchasePrice, _signer, _buyer, _amountToPurchase, _mintVoucher);
+      sellItemOnPrimarySale(
+        purchasePrice,
+        _signer,
+        _buyer,
+        _amountToPurchase,
+        _mintVoucher
+      );
     } else {
-      sellItemOnSecondarySale(purchasePrice, _signer, _buyer, _amountToPurchase, _mintVoucher);
+      sellItemOnSecondarySale(
+        purchasePrice,
+        _signer,
+        _buyer,
+        _amountToPurchase,
+        _mintVoucher
+      );
     }
 
     incrementSellCount(
@@ -147,21 +173,21 @@ contract MarketContract is
     NFTVoucher calldata _mintVoucher
   ) internal {
     console.log("CREATE MASTER ITEM about to be called....");
-      uint256 tokenId = masterContract.createMasterItem(
-        _signer,
-        _mintVoucher.tokenUri,
-        _mintVoucher.maxSupply,
-        _mintVoucher.royaltyFeeInBips
-      );
+    uint256 tokenId = masterContract.createMasterItem(
+      _signer,
+      _mintVoucher.tokenUri,
+      _mintVoucher.maxSupply,
+      _mintVoucher.creatorRoyaltyFee
+    );
 
-      payAndTransfer(
-        tokenId,
-        _buyer,
-        _signer,
-        purchasePrice,
-        _amountToPurchase,
-        _mintVoucher.isMaster
-      );
+    payAndTransfer(
+      tokenId,
+      _buyer,
+      _signer,
+      purchasePrice,
+      _amountToPurchase,
+      _mintVoucher.isMaster
+    );
   }
 
   /**
@@ -435,7 +461,7 @@ contract MarketContract is
         keccak256(
           abi.encode(
             keccak256(
-              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeeInBips)"
+              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 creatorRoyaltyFee)"
             ),
             voucher.nftContractAddress,
             voucher.price,
@@ -446,11 +472,13 @@ contract MarketContract is
             voucher.maxSupply,
             voucher.isMaster,
             keccak256(bytes(voucher.currency)),
-            voucher.royaltyFeeInBips
+            voucher.creatorRoyaltyFee
           )
         )
       );
   }
+
+  //TODO() Make new hash function for new SecondarySaleVoucher
 
   /**
    * @notice Returns the chain id of the current blockchain.
@@ -478,4 +506,6 @@ contract MarketContract is
     bytes32 digest = _hash(voucher);
     return ECDSA.recover(digest, voucher.signature);
   }
+
+  //TODO() Make new _verify function for new SecondarySaleVoucher
 }
