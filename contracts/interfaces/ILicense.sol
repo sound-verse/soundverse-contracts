@@ -6,8 +6,7 @@ interface ILicense {
         address signer,
         string memory mintURI,
         uint256 amount,
-        bytes memory erc721Reference,
-        uint96 _royaltyFeeInBips
+        bytes memory erc721Reference
     ) external;
 
     function transferLicenses(
@@ -19,6 +18,6 @@ interface ILicense {
 
     function licensesBalanceOf(address account, uint256 id) external returns(uint256);
 
-    function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external returns (address, uint256);
+    function _getCreator(uint256 _tokenId) external view returns (address);
 
 }

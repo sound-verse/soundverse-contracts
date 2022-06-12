@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 pragma abicoder v2;
 
 import "./CommonUtils.sol";
 import "./libs/PercentageUtils.sol";
 import "./interfaces/IMaster.sol";
 import "./interfaces/ILicense.sol";
+import "./RoyaltyManager.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -20,7 +21,8 @@ contract MarketContract is
   AccessControlEnumerable,
   EIP712,
   Ownable,
-  ReentrancyGuard
+  ReentrancyGuard,
+  RoyaltyManager
 {
   using Counters for Counters.Counter;
   using SafeMath for uint256;
@@ -44,38 +46,37 @@ contract MarketContract is
   ICommonUtils public commonUtils;
   ILicense public licensesContract;
   IMaster public masterContract;
+  address licenseAddress;
+  address masterAddress;
 
   // Events
   event Withdrawal(address _payee, uint256 _amount);
   event UnlistedNFT(string tokenUri, address contractAddress, address caller);
 
-  // Structs
-  struct NFTVoucher {
-    address nftContractAddress;
+  // Vouchers
+  struct MintVoucher {
     uint256 price;
     uint256 sellCount;
     string tokenUri;
-    uint256 tokenId;
     uint256 supply;
     uint256 maxSupply;
     bool isMaster;
     bytes signature;
     string currency;
-    uint96 creatorRoyaltyFee;
+    uint96 royaltyFeeMaster;
+    uint96 royaltyFeeLicense;
+    uint96 creatorOwnerSplit;
   }
 
-  // TODO() new voucher for secomndary sales
-  struct SecondarySaleVoucher {
+  struct SaleVoucher {
     address nftContractAddress;
     uint256 price;
     uint256 sellCount;
     string tokenUri;
-    uint256 tokenId;
     uint256 supply;
     bool isMaster;
     bytes signature;
-    address[] contributorAddresses;
-    uint96[] contributorRoyaltyFee;
+    string currency;
   }
 
   // Constructor
@@ -91,8 +92,8 @@ contract MarketContract is
    * @dev Initializes the contracts with respective interfaces
    */
   function initializeContracts() internal {
-    address licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
-    address masterAddress = commonUtils.getContractAddressFrom(MASTER);
+    licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
+    masterAddress = commonUtils.getContractAddressFrom(MASTER);
     licensesContract = ILicense(licenseAddress);
     masterContract = IMaster(masterAddress);
   }
@@ -102,55 +103,108 @@ contract MarketContract is
    * @param _buyer The address of the account which will receive the NFT upon success.
    * @param _seller The address of the account which will sell the NFT upon success.
    * @param _amountToPurchase Amount of items to be purchased
-   * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
+   * @param _mintVoucher A signed MintVoucher that describes the NFT to be redeemed.
    */
   function redeemItem(
     address _buyer,
     address _seller,
     uint256 _amountToPurchase,
-    NFTVoucher calldata _mintVoucher
+    MintVoucher calldata _mintVoucher
   ) public payable nonReentrant {
     console.log("REDEEMITEM STARTING....");
 
-    uint256 purchasePrice;
-    address _signer;
+    initializeContracts();
 
-    (purchasePrice, _signer) = approvePurchase(
+    uint256 purchasePrice;
+    address nftContractAddress;
+    if (_mintVoucher.isMaster == true) {
+      nftContractAddress = masterAddress;
+    } else {
+      nftContractAddress = licenseAddress;
+    }
+
+    address _signer = _verify(_mintVoucher);
+    purchasePrice = approvePurchase(
       _seller,
+      _signer,
+      _mintVoucher.price,
+      _mintVoucher.isMaster,
+      nftContractAddress,
+      _mintVoucher.tokenUri,
+      _mintVoucher.sellCount,
+      _amountToPurchase
+    );
+
+    // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
+    uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
+
+    require(tokenId == 0, "TokenId must not exist");
+    sellItemOnPrimarySale(
+      purchasePrice,
+      _signer,
+      _buyer,
       _amountToPurchase,
       _mintVoucher
     );
 
-    initializeContracts();
-
-    // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
-    uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
-    if (tokenId == 0) {
-      sellItemOnPrimarySale(
-        purchasePrice,
-        _signer,
-        _buyer,
-        _amountToPurchase,
-        _mintVoucher
-      );
-    } else {
-      sellItemOnSecondarySale(
-        purchasePrice,
-        _signer,
-        _buyer,
-        _amountToPurchase,
-        _mintVoucher
-      );
-    }
-
-    incrementSellCount(
-      _signer,
-      _mintVoucher.nftContractAddress,
-      _mintVoucher.tokenUri
-    );
+    incrementSellCount(_signer, nftContractAddress, _mintVoucher.tokenUri);
 
     uint256 calculatedServiceFees = calculateServiceFees(
       _mintVoucher.price,
+      serviceFees()
+    );
+
+    withdrawFees(calculatedServiceFees);
+  }
+
+  /**
+   * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties
+   * @param _buyer The address of the account which will receive the NFT upon success.
+   * @param _seller The address of the account which will sell the NFT upon success.
+   * @param _amountToPurchase Amount of items to be purchased
+   * @param _saleVoucher A signed SaleVoucher that describes the NFT to be redeemed.
+   */
+  function redeemItemSecondarySale(
+    address _buyer,
+    address _seller,
+    uint256 _amountToPurchase,
+    SaleVoucher calldata _saleVoucher
+  ) public payable nonReentrant {
+    console.log("REDEEMITEM STARTING....");
+
+    uint256 purchasePrice;
+
+    address _signer = _verify(_saleVoucher);
+    purchasePrice = approvePurchase(
+      _seller,
+      _signer,
+      _saleVoucher.price,
+      _saleVoucher.isMaster,
+      _saleVoucher.nftContractAddress,
+      _saleVoucher.tokenUri,
+      _saleVoucher.sellCount,
+      _amountToPurchase
+    );
+
+    // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
+    uint256 tokenId = masterContract.tokenIdForURI(_saleVoucher.tokenUri);
+    sellItemOnSecondarySale(
+      tokenId,
+      purchasePrice,
+      _signer,
+      _buyer,
+      _amountToPurchase,
+      _saleVoucher
+    );
+
+    incrementSellCount(
+      _signer,
+      _saleVoucher.nftContractAddress,
+      _saleVoucher.tokenUri
+    );
+
+    uint256 calculatedServiceFees = calculateServiceFees(
+      _saleVoucher.price,
       serviceFees()
     );
 
@@ -163,21 +217,27 @@ contract MarketContract is
    * @param _signer The address of the account which will sell the NFT upon success.
    * @param _buyer The address of the account which will receive the NFT upon success.
    * @param _amountToPurchase Amount of items to be purchased
-   * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
+   * @param _mintVoucher A signed MintVoucher that describes the NFT to be redeemed.
    */
   function sellItemOnPrimarySale(
     uint256 purchasePrice,
     address _signer,
     address _buyer,
     uint256 _amountToPurchase,
-    NFTVoucher calldata _mintVoucher
+    MintVoucher calldata _mintVoucher
   ) internal {
     console.log("CREATE MASTER ITEM about to be called....");
     uint256 tokenId = masterContract.createMasterItem(
       _signer,
       _mintVoucher.tokenUri,
-      _mintVoucher.maxSupply,
-      _mintVoucher.creatorRoyaltyFee
+      _mintVoucher.maxSupply
+    );
+
+    _setTokenRoyaltySplit(
+      tokenId,
+      _mintVoucher.royaltyFeeMaster,
+      _mintVoucher.royaltyFeeLicense,
+      _mintVoucher.creatorOwnerSplit
     );
 
     payAndTransfer(
@@ -192,93 +252,76 @@ contract MarketContract is
 
   /**
    * @dev Function called for secondary sales
+   * @param _tokenId ID of the NFT to purchase
    * @param purchasePrice Price of the NFT to purchase
    * @param _signer The address of the account which will sell the NFT upon success.
    * @param _buyer The address of the account which will receive the NFT upon success.
    * @param _amountToPurchase Amount of items to be purchased
-   * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
+   * @param _saleVoucher A signed SaleVoucher that describes the NFT to be redeemed.
    */
   function sellItemOnSecondarySale(
+    uint256 _tokenId,
     uint256 purchasePrice,
     address _signer,
     address _buyer,
     uint256 _amountToPurchase,
-    NFTVoucher calldata _mintVoucher
+    SaleVoucher calldata _saleVoucher
   ) internal {
     console.log("PURCHASENFT: Royalty Info STARTING....");
-    address receiver;
-    uint256 royalties;
-    if (_mintVoucher.isMaster == true) {
-      (receiver, royalties) = masterContract.royaltyInfo(
-        _mintVoucher.tokenId,
-        _mintVoucher.price
-      );
-    } else {
-      (receiver, royalties) = licensesContract.royaltyInfo(
-        _mintVoucher.tokenId,
-        _mintVoucher.price
-      );
-    }
-
-    uint256 purchasePriceWithoutRoyalties = purchasePrice.sub(royalties);
-    console.log("purchasePrice: ", purchasePrice);
-    console.log("roxyalties: ", royalties);
-    console.log(
-      "purchasePriceWithoutRoyalties: ",
-      purchasePriceWithoutRoyalties
-    );
-
-    console.log(": transferring royalties STARTING....");
-    payable(receiver).transfer(royalties);
-
-    console.log("PURCHASENFT: payAndTransfer STARTING....");
 
     payAndTransfer(
-      _mintVoucher.tokenId,
+      _tokenId,
       _buyer,
       _signer,
-      purchasePriceWithoutRoyalties,
+      purchasePrice,
       _amountToPurchase,
-      _mintVoucher.isMaster
+      _saleVoucher.isMaster
     );
   }
 
   /**
    * @dev Monetary checklist for purchasing NFTs, will return purchase price
    * @param _seller The address of the account which will sell the NFT upon success.
+   * @param _signer The address of the account which will sell the NFT upon success.
+   * @param _price Price to be paid for NFT.
+   * @param _isMaster Indicates if NFT is master.
+   * @param _nftContractAddress The address of the account which will sell the NFT upon success.
+   * @param _tokenUri URI assigned to NFT.
+   * @param _sellCount Count of the selling transaction.
    * @param _amountToPurchase Amount of items to be purchased
-   * @param _mintVoucher A signed NFTVoucher that describes the NFT to be redeemed.
+
    */
   function approvePurchase(
     address _seller,
-    uint256 _amountToPurchase,
-    NFTVoucher calldata _mintVoucher
-  ) internal returns (uint256, address) {
+    address _signer,
+    uint256 _price,
+    bool _isMaster,
+    address _nftContractAddress,
+    string memory _tokenUri,
+    uint256 _sellCount,
+    uint256 _amountToPurchase
+  ) internal returns (uint256) {
     uint256 totalPurchase = msg.value;
     require(totalPurchase > 0, "No amount being transferred");
-    address _signer = _verify(_mintVoucher);
 
     // make sure that the signer of the Voucher is the seller
     require(_seller == _signer, "Signature invalid");
 
     uint256 purchaseFees = serviceFees();
 
-    uint256 calculatedServiceFees = calculateServiceFees(
-      _mintVoucher.price,
-      purchaseFees
-    );
+    uint256 calculatedServiceFees = calculateServiceFees(_price, purchaseFees);
 
     // Total amount to pay with service fees
     uint256 purchasePriceWithServiceFee;
-    if (_mintVoucher.isMaster == true) {
+    if (_isMaster == true) {
       purchasePriceWithServiceFee = calculateAmountToPay(
-        _mintVoucher.price,
+        _price,
         calculatedServiceFees,
         1
       );
     } else {
       purchasePriceWithServiceFee = calculateAmountToPay(
-        _mintVoucher.price,
+        _price,
         calculatedServiceFees,
         _amountToPurchase
       );
@@ -294,13 +337,11 @@ contract MarketContract is
     );
 
     require(
-      sellCounts[_signer][_mintVoucher.nftContractAddress][
-        _mintVoucher.tokenUri
-      ] == _mintVoucher.sellCount,
+      sellCounts[_signer][_nftContractAddress][_tokenUri] == _sellCount,
       "Signature not valid"
     );
 
-    return (purchasePrice, _signer);
+    return purchasePrice;
   }
 
   /**
@@ -323,9 +364,22 @@ contract MarketContract is
     require(_tokenId != 0, "NFT could not be minted");
     // Transfer NFTS
     uint256 licensesAmountFromSigner;
+
+    uint256 royaltyAmountCreator;
+    uint256 royaltyAmountOwner;
+    uint256 restSalePrice;
     if (_isMaster == true) {
+      (royaltyAmountCreator, restSalePrice) = _royaltySplitMaster(
+        _tokenId,
+        _purchasePrice
+      );
+
+      address creator = masterContract._getCreator(_tokenId);
+
+      payable(creator).transfer(royaltyAmountCreator);
+
       //transfer money to seller
-      payable(_signer).transfer(_purchasePrice);
+      payable(_signer).transfer(restSalePrice);
 
       // Transfer master and license(s) to buyer
       masterContract.transferMaster(_signer, _buyer, _tokenId);
@@ -341,6 +395,21 @@ contract MarketContract is
       );
       itemsSold.increment();
     } else {
+      (
+        royaltyAmountCreator,
+        royaltyAmountOwner,
+        restSalePrice
+      ) = _royaltySplitLicense(_tokenId, _purchasePrice);
+
+      address creator = licensesContract._getCreator(_tokenId);
+      address owner = masterContract._getOwner(_tokenId);
+
+      payable(creator).transfer(royaltyAmountCreator);
+      payable(owner).transfer(royaltyAmountOwner);
+
+      //transfer money to seller
+      payable(_signer).transfer(restSalePrice);
+
       // Transfer license(s) to buyer
       licensesContract.transferLicenses(
         _signer,
@@ -453,32 +522,54 @@ contract MarketContract is
 
   /**
    * @notice Returns a hash of the given Voucher, prepared using EIP712 typed data hashing rules.
-   * @param voucher An NFTVoucher to hash.
+   * @param voucher An MintVoucher to hash.
    */
-  function _hash(NFTVoucher calldata voucher) internal view returns (bytes32) {
+  function _hash(MintVoucher calldata voucher) internal view returns (bytes32) {
     return
       _hashTypedDataV4(
         keccak256(
           abi.encode(
             keccak256(
-              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 tokenId,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 creatorRoyaltyFee)"
+              "SVVoucher(uint256 price,uint256 sellCount,string tokenUri,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeeMaster,uint96 royaltyFeeLicense,uint96 creatorOwnerSplit)"
             ),
-            voucher.nftContractAddress,
             voucher.price,
             voucher.sellCount,
             keccak256(bytes(voucher.tokenUri)),
-            voucher.tokenId,
             voucher.supply,
             voucher.maxSupply,
             voucher.isMaster,
             keccak256(bytes(voucher.currency)),
-            voucher.creatorRoyaltyFee
+            voucher.royaltyFeeMaster,
+            voucher.royaltyFeeLicense,
+            voucher.creatorOwnerSplit
           )
         )
       );
   }
 
-  //TODO() Make new hash function for new SecondarySaleVoucher
+  /**
+   * @notice Returns a hash of the given Voucher, prepared using EIP712 typed data hashing rules.
+   * @param voucher An SaleVoucher to hash.
+   */
+  function _hash(SaleVoucher calldata voucher) internal view returns (bytes32) {
+    return
+      _hashTypedDataV4(
+        keccak256(
+          abi.encode(
+            keccak256(
+              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 supply,bool isMaster,string currency)"
+            ),
+            voucher.nftContractAddress,
+            voucher.price,
+            voucher.sellCount,
+            keccak256(bytes(voucher.tokenUri)),
+            voucher.supply,
+            voucher.isMaster,
+            keccak256(bytes(voucher.currency))
+          )
+        )
+      );
+  }
 
   /**
    * @notice Returns the chain id of the current blockchain.
@@ -498,7 +589,7 @@ contract MarketContract is
    * @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
    * @param voucher An Voucher describing an unminted or minted NFT.
    */
-  function _verify(NFTVoucher calldata voucher)
+  function _verify(MintVoucher calldata voucher)
     internal
     view
     returns (address)
@@ -507,5 +598,47 @@ contract MarketContract is
     return ECDSA.recover(digest, voucher.signature);
   }
 
-  //TODO() Make new _verify function for new SecondarySaleVoucher
+  function _verify(SaleVoucher calldata voucher)
+    internal
+    view
+    returns (address)
+  {
+    bytes32 digest = _hash(voucher);
+    return ECDSA.recover(digest, voucher.signature);
+  }
+
+  // Royalties
+  function _setTokenRoyaltySplit(
+    uint256 tokenId,
+    uint96 royaltyFeeMaster,
+    uint96 royaltyFeeLicense,
+    uint96 creatorOwnerRoyaltySplit
+  ) internal {
+    setTokenRoyaltySplit(
+      tokenId,
+      royaltyFeeMaster,
+      royaltyFeeLicense,
+      creatorOwnerRoyaltySplit
+    );
+  }
+
+  function _royaltySplitMaster(uint256 _tokenId, uint256 _salePrice)
+    public
+    view
+    returns (uint256, uint256)
+  {
+    return royaltySplitMaster(_tokenId, _salePrice);
+  }
+
+  function _royaltySplitLicense(uint256 _tokenId, uint256 _salePrice)
+    public
+    view
+    returns (
+      uint256,
+      uint256,
+      uint256
+    )
+  {
+    return royaltySplitLicense(_tokenId, _salePrice);
+  }
 }

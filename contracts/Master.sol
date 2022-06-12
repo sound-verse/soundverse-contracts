@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 
 import "./interfaces/ILicense.sol";
 import "./CommonUtils.sol";
@@ -11,15 +11,13 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "hardhat/console.sol";
 
 contract Master is
   AccessControlEnumerable,
   ERC721URIStorage,
   Pausable,
-  Ownable,
-  ERC2981
+  Ownable
 {
   using SafeMath for uint256;
   using Counters for Counters.Counter;
@@ -54,85 +52,21 @@ contract Master is
     licensesContract = ILicense(licenseAddress);
   }
 
-  // Creators and contributors *Master Royalties*
-  struct Contributor {
-    address contributorAddress;
-    uint96 royaltyFeeInBips;
+  /**
+   * @dev Creators
+   */
+  mapping(uint256 => address) public _creators;
+
+  function _setCreator(uint256 _tokenId, address _creator) internal {
+    _creators[_tokenId] = _creator;
   }
 
-  Contributor[] public contributors;
-
-  /**
-   * @dev Project creator mapping
-   */
-  mapping(uint256 => Contributor[]) public _creatorsAndContributorsTemp;
-  mapping(uint256 => Contributor[]) public _creatorsAndContributors;
-
-  /**
-   * @dev Sets token contributors for token type `id`.
-   * @param _tokenId token ID receiving the creator
-   * @param _contributorAddresses Address of contributor of the project
-   * @param _royaltyFeeInBips percentage of royalty for contributor of the project
-   */
-  function addContributorsToMaster(
-    uint256 _tokenId,
-    address[] memory _contributorAddresses,
-    uint96[] memory _royaltyFeeInBips
-  ) public {
-    uint96 totalPercentage = 0;
-    for (uint256 i = 0; i < _contributorAddresses.length; i++) {
-      Contributor memory newContributor = Contributor(
-        _contributorAddresses[i],
-        _royaltyFeeInBips[i]
-      );
-
-      totalPercentage += _royaltyFeeInBips[i];
-      if (totalPercentage >= 100) {
-        require(
-          totalPercentage <= 100,
-          "Maximum percentage exceeded for royalties"
-        );
-      } else {
-        contributors.push(newContributor);
-      }
-    }
-    _creatorsAndContributors[_tokenId] = contributors;
+  function _getCreator(uint256 _tokenId) external view returns (address) {
+    return _creators[_tokenId];
   }
 
-  /**
-   * @dev Sets token contributors from temp to original for token type `id`.
-   * @param _tokenId token ID receiving the creator
-   */
-  function setTokenContributors(uint256 _tokenId) internal {
-    Contributor[] storage contributorsToSet = _creatorsAndContributorsTemp[
-      _tokenId
-    ];
-    _creatorsAndContributors[_tokenId] = contributorsToSet;
-  }
-
-  /**
-   * @param _tokenId token ID receiving the creator
-   * @return address from creator of the project
-   */
-  function creators(uint256 _tokenId)
-    internal
-    view
-    returns (Contributor[] storage)
-  {
-    return _creatorsAndContributors[_tokenId];
-  }
-
-  function cleanUpContributorsTemp(uint256 _tokenId) public {
-    //clean up array after assigning creators
-    console.log("Cleanup Creators called....");
-    for (
-      uint256 i = 0;
-      i < _creatorsAndContributorsTemp[_tokenId].length;
-      i++
-    ) {
-      delete _creatorsAndContributorsTemp[i];
-      i++;
-    }
+  function _getOwner(uint256 _tokenId) external view returns(address) {
+    return ownerOf(_tokenId);
   }
 
   /**
@@ -159,7 +93,8 @@ contract Master is
    * @param _uri URI to retrieve the TokenID from
    * @return URI from token ID
    */
-  function tokenIdForURI(string memory _uri) public view returns (uint256) {
+  function getTokenIdForURI(string memory _uri) public view returns (uint256) {
+    require(_urisToIds[_uri] != 0, "Master: URI already used");
     return (_urisToIds[_uri]);
   }
 
@@ -178,25 +113,19 @@ contract Master is
    * @param _signer address of creator
    * @param tokenURI URI of the song to be minted
    * @param _licensesAmount amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    * Finally approves the Marketplace to handle the Master
    */
   function createMasterItem(
     address _signer,
     string memory tokenURI,
-    uint256 _licensesAmount,
-    uint96 _royaltyFeeInBips
+    uint256 _licensesAmount
   ) public onlyMarketplace returns (uint256) {
     console.log("CREATE MASTER ITEM starting....");
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
     require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
     console.log("MINTITEM about to be called....");
-    uint256 tokenId = mintItem(
-      _signer,
-      tokenURI,
-      _licensesAmount,
-      _royaltyFeeInBips
-    );
+
+    uint256 tokenId = mintItem(_signer, tokenURI, _licensesAmount);
 
     return tokenId;
   }
@@ -206,13 +135,11 @@ contract Master is
    * @param _signer address of creator
    * @param _mintURI URI of the song to be minted
    * @param _amountToMint amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    */
   function mintItem(
     address _signer,
     string memory _mintURI,
-    uint256 _amountToMint,
-    uint96 _royaltyFeeInBips
+    uint256 _amountToMint
   ) private returns (uint256) {
     console.log("MINTITEM STARTING....");
     _tokenIdTracker.increment();
@@ -220,16 +147,12 @@ contract Master is
 
     require(bytes(_uris[currentTokenId]).length == 0, "Cannot set URI twice");
 
-    // Saves creator in mapping with tokenId
-    setTokenContributors(currentTokenId);
-    console.log("CleanupCreators about to be called....");
-    cleanUpContributorsTemp(currentTokenId);
-
     _safeMint(_signer, currentTokenId);
+    _setCreator(currentTokenId, _signer);
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
+
     console.log("setRoyaltyFees about to be called....");
-    setRoyaltyFeesForContributors(currentTokenId);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
@@ -239,9 +162,9 @@ contract Master is
       _signer,
       _mintURI,
       _amountToMint,
-      commonUtils.toBytes(currentTokenId),
-      _royaltyFeeInBips
+      commonUtils.toBytes(currentTokenId)
     );
+
     return currentTokenId;
   }
 
@@ -310,7 +233,7 @@ contract Master is
     public
     view
     virtual
-    override(AccessControlEnumerable, ERC721, ERC2981)
+    override(AccessControlEnumerable, ERC721)
     returns (bool)
   {
     return super.supportsInterface(interfaceId);
@@ -330,33 +253,5 @@ contract Master is
   modifier onlyMarketplace() {
     require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"));
     _;
-  }
-
-  function setRoyaltyFees(
-    uint256 _tokenId,
-    address _receiver,
-    uint96 _royaltyFeeInBips
-  ) internal {
-    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBips);
-  }
-
-  function setRoyaltyFeesForContributors(uint256 _tokenId) internal {
-    Contributor[] storage contributorsForRoyalty = _creatorsAndContributorsTemp[_tokenId];
-    for (uint256 i = 0; i < contributorsForRoyalty.length; i++) {
-      _setTokenRoyalty(
-        _tokenId,
-        contributorsForRoyalty[i].contributorAddress,
-        contributorsForRoyalty[i].royaltyFeeInBips
-      );
-    }
-  }
-
-  function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
-    public
-    view
-    override
-    returns (address, uint256)
-  {
-    return royaltyInfo(_tokenId, _salePrice);
   }
 }

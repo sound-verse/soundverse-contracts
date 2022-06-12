@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 
 import "./CommonUtils.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -9,15 +9,13 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 contract License is
   Context,
   AccessControlEnumerable,
   ERC1155Burnable,
   ERC1155Pausable,
-  Ownable,
-  ERC2981
+  Ownable
 {
   using Counters for Counters.Counter;
 
@@ -39,6 +37,19 @@ contract License is
     _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _setupRole(PAUSER_ROLE, _msgSender());
     commonUtils = ICommonUtils(_commonUtilsAddress);
+  }
+
+   /**
+   * @dev Creators
+   */
+  mapping(uint256 => address) public _creators;
+
+  function _setCreator(uint256 _tokenId, address _creator) internal {
+    _creators[_tokenId] = _creator;
+  }
+
+  function _getCreator(uint256 _tokenId) public view returns (address) {
+    return _creators[_tokenId];
   }
 
   /**
@@ -67,19 +78,23 @@ contract License is
    * @param _mintURI URI of the song
    * @param _amount amount of licenses to be created
    * @param _erc721Reference reference of the Master NFT
-   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    */
   function mintLicenses(
     address _signer,
     string memory _mintURI,
     uint256 _amount,
-    bytes memory _erc721Reference,
-    uint96 _royaltyFeeInBips
+    bytes memory _erc721Reference
   ) public onlyMaster {
     _licenseBundleId.increment();
     uint256 currentLicenseBundleId = _licenseBundleId.current();
 
-    mint(_signer, currentLicenseBundleId, _mintURI, _amount, _erc721Reference, _royaltyFeeInBips);
+    mint(
+      _signer,
+      currentLicenseBundleId,
+      _mintURI,
+      _amount,
+      _erc721Reference
+    );
   }
 
   /**
@@ -89,19 +104,17 @@ contract License is
    * @param _mintURI URI of the song
    * @param _amount amount of licenses to be created
    * @param _erc721Reference reference of the Master NFT
-   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    */
   function mint(
     address _signer,
     uint256 _currentLicenseBundleId,
     string memory _mintURI,
     uint256 _amount,
-    bytes memory _erc721Reference,
-    uint96 _royaltyFeeInBips
+    bytes memory _erc721Reference
   ) private {
     setTokenUri(_currentLicenseBundleId, _mintURI);
-    setRoyaltyFees(_currentLicenseBundleId, _signer, _royaltyFeeInBips);
     _mint(_signer, _currentLicenseBundleId, _amount, _erc721Reference);
+    _setCreator(_currentLicenseBundleId, _signer);
 
     emit LicenseMintEvent(_currentLicenseBundleId, _mintURI);
   }
@@ -155,7 +168,7 @@ contract License is
     public
     view
     virtual
-    override(AccessControlEnumerable, ERC1155, ERC2981)
+    override(AccessControlEnumerable, ERC1155)
     returns (bool)
   {
     return super.supportsInterface(interfaceId);
@@ -173,7 +186,10 @@ contract License is
   }
 
   modifier onlyMaster() {
-    require(msg.sender == commonUtils.getContractAddressFrom("Master"), "Not authorized - Master");
+    require(
+      msg.sender == commonUtils.getContractAddressFrom("Master"),
+      "Not authorized - Master"
+    );
     _;
   }
 
@@ -212,14 +228,4 @@ contract License is
     return balanceOf(_account, _tokenId);
   }
 
-  function setRoyaltyFees(uint256 _tokenId, address _receiver, uint96 _royaltyFeeInBips)
-    public
-    onlyMaster
-  {
-    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBips);
-  }
-
-  function royaltyInfo(uint256 _tokenId, uint256 _salePrice) public override view returns (address, uint256) {
-    return royaltyInfo(_tokenId, _salePrice);
-  }
 }
