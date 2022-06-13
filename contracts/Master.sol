@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 
 import "./interfaces/ILicense.sol";
 import "./CommonUtils.sol";
@@ -11,15 +11,13 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "hardhat/console.sol";
 
 contract Master is
   AccessControlEnumerable,
   ERC721URIStorage,
   Pausable,
-  Ownable,
-  ERC2981
+  Ownable
 {
   using SafeMath for uint256;
   using Counters for Counters.Counter;
@@ -33,7 +31,6 @@ contract Master is
   string internal constant LICENSE = "License";
   uint256 internal constant MIN_SUPPLY = 2;
   Counters.Counter private _tokenIdTracker;
-  address[] public creatorArray;
 
   // Events
   event MasterMintEvent(uint256 indexed id, string uri);
@@ -56,47 +53,20 @@ contract Master is
   }
 
   /**
-   * @dev Project creator mapping
+   * @dev Creators
    */
-  mapping(uint256 => address[]) public _creators;
+  mapping(uint256 => address) public _creators;
 
-  /**
-   * @dev Sets token creator for token type `id`.
-   * @param tokenId token ID receiving the creator
-   * @param _creator Creator of the project
-   */
-  function setTokenCreator(uint256 tokenId, address _creator) internal {
-    creatorArray.push(_creator);
-    _creators[tokenId] = creatorArray;
+  function _setCreator(uint256 _tokenId, address _creator) internal {
+    _creators[_tokenId] = _creator;
   }
 
-  /**
-   * @dev Sets token creators for token type `id`.
-   * @param tokenId token ID receiving the creator
-   * @param _creatorsArray Creator of the project
-   */
-  function setTokenCreators(uint256 tokenId, address[] memory _creatorsArray)
-    public
-    onlyOwner
-  {
-    _creators[tokenId] = _creatorsArray;
+  function _getCreator(uint256 _tokenId) external view returns (address) {
+    return _creators[_tokenId];
   }
 
-  function cleanUpCreators() public {
-    //clean up array after assigning creators
-    console.log("Cleanup Creators called....");
-    for (uint256 i = 0; i < creatorArray.length; i++) {
-      delete creatorArray[i];
-      i++;
-    }
-  }
-
-  /**
-   * @param tokenId token ID receiving the creator
-   * @return address from creator of the project
-   */
-  function creators(uint256 tokenId) internal view returns (address[] storage) {
-    return _creators[tokenId];
+  function _getOwner(uint256 _tokenId) external view returns(address) {
+    return ownerOf(_tokenId);
   }
 
   /**
@@ -111,11 +81,11 @@ contract Master is
 
   /**
    * @dev Returns the actual URI for TokenID.
-   * @param tokenId token ID to retrieve the uri from
+   * @param _tokenId token ID to retrieve the uri from
    * @return URI from token ID
    */
-  function uri(uint256 tokenId) public view returns (string memory) {
-    return (_uris[tokenId]);
+  function uri(uint256 _tokenId) public view returns (string memory) {
+    return (_uris[_tokenId]);
   }
 
   /**
@@ -123,7 +93,8 @@ contract Master is
    * @param _uri URI to retrieve the TokenID from
    * @return URI from token ID
    */
-  function tokenIdForURI(string memory _uri) public view returns (uint256) {
+  function getTokenIdForURI(string memory _uri) public view returns (uint256) {
+    require(_urisToIds[_uri] != 0, "Master: URI already used");
     return (_urisToIds[_uri]);
   }
 
@@ -142,25 +113,19 @@ contract Master is
    * @param _signer address of creator
    * @param tokenURI URI of the song to be minted
    * @param _licensesAmount amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    * Finally approves the Marketplace to handle the Master
    */
   function createMasterItem(
     address _signer,
     string memory tokenURI,
-    uint256 _licensesAmount,
-    uint96 _royaltyFeeInBips
+    uint256 _licensesAmount
   ) public onlyMarketplace returns (uint256) {
     console.log("CREATE MASTER ITEM starting....");
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
     require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
     console.log("MINTITEM about to be called....");
-    uint256 tokenId = mintItem(
-      _signer,
-      tokenURI,
-      _licensesAmount,
-      _royaltyFeeInBips
-    );
+
+    uint256 tokenId = mintItem(_signer, tokenURI, _licensesAmount);
 
     return tokenId;
   }
@@ -170,13 +135,11 @@ contract Master is
    * @param _signer address of creator
    * @param _mintURI URI of the song to be minted
    * @param _amountToMint amount of licenses to mint linked to the Master NFT
-   * @param _royaltyFeeInBips Percentage of royalty fees for creator
    */
   function mintItem(
     address _signer,
     string memory _mintURI,
-    uint256 _amountToMint,
-    uint96 _royaltyFeeInBips
+    uint256 _amountToMint
   ) private returns (uint256) {
     console.log("MINTITEM STARTING....");
     _tokenIdTracker.increment();
@@ -184,16 +147,12 @@ contract Master is
 
     require(bytes(_uris[currentTokenId]).length == 0, "Cannot set URI twice");
 
-    // Creator in mapping speichern anhand tokenId
-    setTokenCreator(currentTokenId, _signer);
-    console.log("CleanupCreators about to be called....");
-    cleanUpCreators();
-
     _safeMint(_signer, currentTokenId);
+    _setCreator(currentTokenId, _signer);
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
+
     console.log("setRoyaltyFees about to be called....");
-    setRoyaltyFees(currentTokenId, _signer, _royaltyFeeInBips);
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
@@ -203,9 +162,9 @@ contract Master is
       _signer,
       _mintURI,
       _amountToMint,
-      commonUtils.toBytes(currentTokenId),
-      _royaltyFeeInBips
+      commonUtils.toBytes(currentTokenId)
     );
+
     return currentTokenId;
   }
 
@@ -274,7 +233,7 @@ contract Master is
     public
     view
     virtual
-    override(AccessControlEnumerable, ERC721, ERC2981)
+    override(AccessControlEnumerable, ERC721)
     returns (bool)
   {
     return super.supportsInterface(interfaceId);
@@ -294,13 +253,5 @@ contract Master is
   modifier onlyMarketplace() {
     require(msg.sender == commonUtils.getContractAddressFrom("MarketContract"));
     _;
-  }
-
-  function setRoyaltyFees(
-    uint256 _tokenId,
-    address _receiver,
-    uint96 _royaltyFeeInBips
-  ) internal {
-    _setTokenRoyalty(_tokenId, _receiver, _royaltyFeeInBips);
   }
 }
