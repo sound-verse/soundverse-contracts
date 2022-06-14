@@ -30,7 +30,6 @@ contract MarketContract is
   address payable internal admin;
   Counters.Counter private itemsSold;
   uint256 public _serviceFees;
-  uint256 public sellCount;
 
   // Constants
   string internal constant SIGNING_DOMAIN = "SVVoucher";
@@ -39,8 +38,8 @@ contract MarketContract is
   string internal constant LICENSE = "License";
 
   // Mappings
-  mapping(address => mapping(address => mapping(string => uint256)))
-    public sellCounts;
+  mapping(bytes => bool) public isVoucherInvalid;
+  mapping(bytes => uint256) public voucherAmountSold;
 
   //Contracts
   ICommonUtils public commonUtils;
@@ -51,12 +50,13 @@ contract MarketContract is
 
   // Events
   event Withdrawal(address _payee, uint256 _amount);
-  event UnlistedNFT(string tokenUri, address contractAddress, address caller);
+  event UnlistedNFT(bytes signature);
+  event RedeemedItem(bytes signature, uint256 soldAmount);
+  event RedeemedItemSecondarySale(bytes signature, uint256 soldAmount);
 
   // Vouchers
   struct MintVoucher {
     uint256 price;
-    uint256 sellCount;
     string tokenUri;
     uint256 supply;
     uint256 maxSupply;
@@ -66,17 +66,18 @@ contract MarketContract is
     uint96 royaltyFeeMaster;
     uint96 royaltyFeeLicense;
     uint96 creatorOwnerSplit;
+    uint256 validUntil;
   }
 
   struct SaleVoucher {
     address nftContractAddress;
     uint256 price;
-    uint256 sellCount;
     string tokenUri;
     uint256 supply;
     bool isMaster;
     bytes signature;
     string currency;
+    uint256 validUntil;
   }
 
   // Constructor
@@ -112,6 +113,20 @@ contract MarketContract is
     MintVoucher calldata _mintVoucher
   ) public payable nonReentrant {
     console.log("REDEEMITEM STARTING....");
+    require(
+      isVoucherInvalid[_mintVoucher.signature] == false,
+      "RedeemItem: Voucher invalid"
+    );
+    require(
+      _mintVoucher.validUntil <= block.timestamp,
+      "RedeemItem: Timestamp exceeded"
+    );
+
+    require(
+      _mintVoucher.supply >=
+        _amountToPurchase.add(voucherAmountSold[_mintVoucher.signature]),
+      "redeemItem: Not enough supply"
+    );
 
     initializeContracts();
 
@@ -129,9 +144,6 @@ contract MarketContract is
       _signer,
       _mintVoucher.price,
       _mintVoucher.isMaster,
-      nftContractAddress,
-      _mintVoucher.tokenUri,
-      _mintVoucher.sellCount,
       _amountToPurchase
     );
 
@@ -147,12 +159,18 @@ contract MarketContract is
       _mintVoucher
     );
 
-    incrementSellCount(_signer, nftContractAddress, _mintVoucher.tokenUri);
-
     uint256 calculatedServiceFees = calculateServiceFees(
       _mintVoucher.price,
       serviceFees()
     );
+
+    voucherAmountSold[_mintVoucher.signature] = voucherAmountSold[_mintVoucher.signature].add(_amountToPurchase);
+
+    emit RedeemedItem(_mintVoucher.signature, _amountToPurchase);
+
+    if(voucherAmountSold[_mintVoucher.signature] == _mintVoucher.supply){
+        isVoucherInvalid[_mintVoucher.signature] = false;
+    }
 
     withdrawFees(calculatedServiceFees);
   }
@@ -171,6 +189,21 @@ contract MarketContract is
     SaleVoucher calldata _saleVoucher
   ) public payable nonReentrant {
     console.log("REDEEMITEM STARTING....");
+    require(
+      isVoucherInvalid[_saleVoucher.signature] == false,
+      "RedeemItem: Voucher invalid"
+    );
+
+    require(
+      _saleVoucher.validUntil <= block.timestamp,
+      "RedeemItem: Timestamp exceeded"
+    );
+
+    require(
+      _saleVoucher.supply >=
+        _amountToPurchase.add(voucherAmountSold[_saleVoucher.signature]),
+      "redeemItemSecondarySale: Not enough supply"
+    );
 
     uint256 purchasePrice;
 
@@ -180,9 +213,6 @@ contract MarketContract is
       _signer,
       _saleVoucher.price,
       _saleVoucher.isMaster,
-      _saleVoucher.nftContractAddress,
-      _saleVoucher.tokenUri,
-      _saleVoucher.sellCount,
       _amountToPurchase
     );
 
@@ -197,16 +227,18 @@ contract MarketContract is
       _saleVoucher
     );
 
-    incrementSellCount(
-      _signer,
-      _saleVoucher.nftContractAddress,
-      _saleVoucher.tokenUri
-    );
-
     uint256 calculatedServiceFees = calculateServiceFees(
       _saleVoucher.price,
       serviceFees()
     );
+
+    voucherAmountSold[_saleVoucher.signature] = voucherAmountSold[_saleVoucher.signature].add(_amountToPurchase);
+
+    emit RedeemedItemSecondarySale(_saleVoucher.signature, _amountToPurchase);
+
+    if(voucherAmountSold[_saleVoucher.signature] == _saleVoucher.supply){
+        isVoucherInvalid[_saleVoucher.signature] = false;
+    }
 
     withdrawFees(calculatedServiceFees);
   }
@@ -285,9 +317,6 @@ contract MarketContract is
    * @param _signer The address of the account which will sell the NFT upon success.
    * @param _price Price to be paid for NFT.
    * @param _isMaster Indicates if NFT is master.
-   * @param _nftContractAddress The address of the account which will sell the NFT upon success.
-   * @param _tokenUri URI assigned to NFT.
-   * @param _sellCount Count of the selling transaction.
    * @param _amountToPurchase Amount of items to be purchased
 
    */
@@ -296,9 +325,6 @@ contract MarketContract is
     address _signer,
     uint256 _price,
     bool _isMaster,
-    address _nftContractAddress,
-    string memory _tokenUri,
-    uint256 _sellCount,
     uint256 _amountToPurchase
   ) internal returns (uint256) {
     uint256 totalPurchase = msg.value;
@@ -334,11 +360,6 @@ contract MarketContract is
     require(
       totalPurchase >= purchasePriceWithServiceFee,
       "Insufficient funds to redeem"
-    );
-
-    require(
-      sellCounts[_signer][_nftContractAddress][_tokenUri] == _sellCount,
-      "Signature not valid"
     );
 
     return purchasePrice;
@@ -454,45 +475,12 @@ contract MarketContract is
   }
 
   /**
-   * @dev Gets the sell count if it exists, otherwise returns 0
-   * @param _ownerAddress Address of the NFT owner
-   * @param _tokenUri TokenUri of the NFT
+   * @dev Unlists an NFT
+   * @param signature Voucher signature
    */
-  function getSellCount(
-    address _ownerAddress,
-    address _nftContractAddress,
-    string memory _tokenUri
-  ) public view returns (uint256) {
-    if (sellCounts[_ownerAddress][_nftContractAddress][_tokenUri] == 0) {
-      return 0;
-    }
-    return sellCounts[_ownerAddress][_nftContractAddress][_tokenUri];
-  }
-
-  /**
-   * @dev Increments the sell count
-   * @param _nftContractAddress Address of the NFT contract
-   * @param _tokenUri TokenUri of the NFT
-   */
-  function incrementSellCount(
-    address _sender,
-    address _nftContractAddress,
-    string memory _tokenUri
-  ) private {
-    sellCounts[_sender][_nftContractAddress][_tokenUri] += 1;
-  }
-
-  /**
-   * @dev Increments the sell count
-   * @param _nftContractAddress Address of the NFT contract
-   * @param _tokenUri TokenUri of the NFT
-   */
-  function unlistItem(address _nftContractAddress, string memory _tokenUri)
-    public
-  {
-    address _sender = _msgSender();
-    incrementSellCount(_sender, _nftContractAddress, _tokenUri);
-    emit UnlistedNFT(_tokenUri, _nftContractAddress, _sender);
+  function unlistItem(bytes memory signature) public {
+    isVoucherInvalid[signature] = false;
+    emit UnlistedNFT(signature);
   }
 
   /**
@@ -530,10 +518,9 @@ contract MarketContract is
         keccak256(
           abi.encode(
             keccak256(
-              "SVVoucher(uint256 price,uint256 sellCount,string tokenUri,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeeMaster,uint96 royaltyFeeLicense,uint96 creatorOwnerSplit)"
+              "SVVoucher(uint256 price,string tokenUri,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeeMaster,uint96 royaltyFeeLicense,uint96 creatorOwnerSplit,uint256 validUntil)"
             ),
             voucher.price,
-            voucher.sellCount,
             keccak256(bytes(voucher.tokenUri)),
             voucher.supply,
             voucher.maxSupply,
@@ -541,7 +528,8 @@ contract MarketContract is
             keccak256(bytes(voucher.currency)),
             voucher.royaltyFeeMaster,
             voucher.royaltyFeeLicense,
-            voucher.creatorOwnerSplit
+            voucher.creatorOwnerSplit,
+            voucher.validUntil
           )
         )
       );
@@ -557,15 +545,15 @@ contract MarketContract is
         keccak256(
           abi.encode(
             keccak256(
-              "SVVoucher(address nftContractAddress,uint256 price,uint256 sellCount,string tokenUri,uint256 supply,bool isMaster,string currency)"
+              "SVVoucher(address nftContractAddress,uint256 price,string tokenUri,uint256 supply,bool isMaster,string currency,uint256 validUntil)"
             ),
             voucher.nftContractAddress,
             voucher.price,
-            voucher.sellCount,
             keccak256(bytes(voucher.tokenUri)),
             voucher.supply,
             voucher.isMaster,
-            keccak256(bytes(voucher.currency))
+            keccak256(bytes(voucher.currency)),
+            voucher.validUntil
           )
         )
       );
