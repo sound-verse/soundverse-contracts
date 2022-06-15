@@ -118,7 +118,7 @@ contract MarketContract is
       "RedeemItem: Voucher invalid"
     );
     require(
-      _mintVoucher.validUntil <= block.timestamp,
+      _mintVoucher.validUntil > block.timestamp,
       "RedeemItem: Timestamp exceeded"
     );
 
@@ -148,7 +148,7 @@ contract MarketContract is
     );
 
     // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
-    uint256 tokenId = masterContract.tokenIdForURI(_mintVoucher.tokenUri);
+    uint256 tokenId = masterContract.getTokenIdForURI(_mintVoucher.tokenUri);
 
     require(tokenId == 0, "TokenId must not exist");
     sellItemOnPrimarySale(
@@ -164,12 +164,14 @@ contract MarketContract is
       serviceFees()
     );
 
-    voucherAmountSold[_mintVoucher.signature] = voucherAmountSold[_mintVoucher.signature].add(_amountToPurchase);
+    voucherAmountSold[_mintVoucher.signature] = voucherAmountSold[
+      _mintVoucher.signature
+    ].add(_amountToPurchase);
 
     emit RedeemedItem(_mintVoucher.signature, _amountToPurchase);
 
-    if(voucherAmountSold[_mintVoucher.signature] == _mintVoucher.supply){
-        isVoucherInvalid[_mintVoucher.signature] = false;
+    if (voucherAmountSold[_mintVoucher.signature] == _mintVoucher.supply) {
+      isVoucherInvalid[_mintVoucher.signature] = false;
     }
 
     withdrawFees(calculatedServiceFees);
@@ -195,7 +197,7 @@ contract MarketContract is
     );
 
     require(
-      _saleVoucher.validUntil <= block.timestamp,
+      _saleVoucher.validUntil > block.timestamp,
       "RedeemItem: Timestamp exceeded"
     );
 
@@ -217,7 +219,7 @@ contract MarketContract is
     );
 
     // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
-    uint256 tokenId = masterContract.tokenIdForURI(_saleVoucher.tokenUri);
+    uint256 tokenId = masterContract.getTokenIdForURI(_saleVoucher.tokenUri);
     sellItemOnSecondarySale(
       tokenId,
       purchasePrice,
@@ -232,12 +234,14 @@ contract MarketContract is
       serviceFees()
     );
 
-    voucherAmountSold[_saleVoucher.signature] = voucherAmountSold[_saleVoucher.signature].add(_amountToPurchase);
+    voucherAmountSold[_saleVoucher.signature] = voucherAmountSold[
+      _saleVoucher.signature
+    ].add(_amountToPurchase);
 
     emit RedeemedItemSecondarySale(_saleVoucher.signature, _amountToPurchase);
 
-    if(voucherAmountSold[_saleVoucher.signature] == _saleVoucher.supply){
-        isVoucherInvalid[_saleVoucher.signature] = false;
+    if (voucherAmountSold[_saleVoucher.signature] == _saleVoucher.supply) {
+      isVoucherInvalid[_saleVoucher.signature] = false;
     }
 
     withdrawFees(calculatedServiceFees);

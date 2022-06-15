@@ -14,9 +14,9 @@ interface IMaster {
     uint256 currentTokenId
   ) external;
 
-  function tokenIdForURI(string memory _uri) external returns (uint256);
+  function getTokenIdForURI(string memory _uri) external returns (uint256);
 
   function _getCreator(uint256 _tokenId) external view returns (address);
 
-  function _getOwner(uint256 _tokenId) external view returns(address);
+  function _getOwner(uint256 _tokenId) external view returns (address);
 }

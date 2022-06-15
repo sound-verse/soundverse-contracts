@@ -65,7 +65,7 @@ contract Master is
     return _creators[_tokenId];
   }
 
-  function _getOwner(uint256 _tokenId) external view returns(address) {
+  function _getOwner(uint256 _tokenId) external view returns (address) {
     return ownerOf(_tokenId);
   }
 
@@ -94,7 +94,6 @@ contract Master is
    * @return URI from token ID
    */
   function getTokenIdForURI(string memory _uri) public view returns (uint256) {
-    require(_urisToIds[_uri] != 0, "Master: URI already used");
     return (_urisToIds[_uri]);
   }
 
@@ -104,6 +103,7 @@ contract Master is
    * @param _uri URI of NFT
    */
   function setTokenIDForURI(uint256 _tokenId, string memory _uri) internal {
+    require(_urisToIds[_uri] == 0, "Master: URI already used");
     _urisToIds[_uri] = _tokenId;
   }
 

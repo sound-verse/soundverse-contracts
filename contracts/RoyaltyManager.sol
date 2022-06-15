@@ -65,27 +65,27 @@ abstract contract RoyaltyManager is IRoyaltyManager {
 
   function setTokenRoyaltySplit(
     uint256 tokenId,
-    uint96 royaltyFeeCreator,
-    uint96 royaltyFeeOwner,
+    uint96 royaltyFeeMaster,
+    uint96 royaltyFeeLicense,
     uint96 creatorOwnerRoyaltySplit
   ) internal virtual {
     require(
-      royaltyFeeCreator <= _splitFeeDenominator(),
-      "RoyaltySplitter: royalty fee for creator will exceed salePrice"
+      royaltyFeeMaster <= _splitFeeDenominator(),
+      "RoyaltyManager: royalties cannot be more then 100%"
     );
     require(
-      royaltyFeeOwner <= _splitFeeDenominator(),
-      "RoyaltySplitter: royalty fee for owner will exceed salePrice"
+      royaltyFeeLicense <= _splitFeeDenominator(),
+      "RoyaltyManager: royalties cannot be more then 100%"
     );
 
     require(
-      royaltyFeeCreator + royaltyFeeOwner == _splitFeeDenominator(),
-      "RoyaltyManager: Sum of royalties is not 100%"
+      creatorOwnerRoyaltySplit <= _splitFeeDenominator(),
+      "RoyaltyManager: royalties cannot be more then 100%"
     );
 
     _tokenRoyaltySplit[tokenId] = RoyaltySplit(
-      royaltyFeeCreator,
-      royaltyFeeOwner,
+      royaltyFeeMaster,
+      royaltyFeeLicense,
       creatorOwnerRoyaltySplit
     );
   }
