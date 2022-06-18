@@ -6820,8 +6820,8 @@ ipaddr.js@1.9.1:
   integrity sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==
 
 ipfs-core-types@^0.8.1:
-  version "0.8.8"
-  resolved "https://registry.yarnpkg.com/ipfs-core-types/-/ipfs-core-types-0.8.8.tgz#4d483dc6035714ea48a0b02e3f82b6c6d55c8525"
+  version "0.8.4"
+  resolved "https://registry.yarnpkg.com/ipfs-core-types/-/ipfs-core-types-0.8.4.tgz#4d483dc6035714ea48a0b02e3f82b6c6d55c8525"
   integrity sha512-sbRZA1QX3xJ6ywTiVQZMOxhlhp4osAZX2SXx3azOLxAtxmGWDMkHYt722VV4nZ2GyJy8qyk5GHQIZ0uvQnpaTg==
   dependencies:
     interface-datastore "^6.0.2"

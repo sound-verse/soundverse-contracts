@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.4;
 
 import "./interfaces/IRoyaltyManager.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-abstract contract RoyaltyManager is IRoyaltyManager {
+abstract contract RoyaltyManager is ERC165, IRoyaltyManager {
   using SafeMath for uint256;
 
   struct RoyaltySplit {
@@ -89,4 +89,5 @@ abstract contract RoyaltyManager is IRoyaltyManager {
       creatorOwnerRoyaltySplit
     );
   }
+
 }
