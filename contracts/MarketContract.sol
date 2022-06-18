@@ -415,7 +415,7 @@ contract MarketContract is
    * @param signature Voucher signature
    */
   function unlistItem(bytes memory signature) public {
-    isVoucherInvalid[signature] = false;
+    isVoucherInvalid[signature] = true;
     emit UnlistedNFT(signature);
   }
 
