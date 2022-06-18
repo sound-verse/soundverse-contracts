@@ -3,7 +3,6 @@ pragma solidity ^0.8.8;
 pragma abicoder v2;
 
 import "./CommonUtils.sol";
-import "./libs/PercentageUtils.sol";
 import "./interfaces/IMaster.sol";
 import "./interfaces/ILicense.sol";
 import "./RoyaltyManager.sol";
@@ -28,7 +27,6 @@ contract MarketContract is
   using SafeMath for uint256;
 
   address payable internal admin;
-  Counters.Counter private itemsSold;
   uint256 public _serviceFees;
 
   // Constants
@@ -45,14 +43,18 @@ contract MarketContract is
   ICommonUtils public commonUtils;
   ILicense public licensesContract;
   IMaster public masterContract;
-  address licenseAddress;
-  address masterAddress;
+  address internal licenseAddress;
+  address internal masterAddress;
 
   // Events
   event Withdrawal(address _payee, uint256 _amount);
   event UnlistedNFT(bytes signature);
-  event RedeemedItem(bytes signature, uint256 soldAmount);
-  event RedeemedItemSecondarySale(bytes signature, uint256 soldAmount);
+  event RedeemedItem(bytes signature, address buyer, uint256 soldAmount);
+  event RedeemedItemSecondarySale(
+    bytes signature,
+    address buyer,
+    uint256 soldAmount
+  );
 
   // Vouchers
   struct MintVoucher {
@@ -100,169 +102,162 @@ contract MarketContract is
   }
 
   /**
-   * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties
-   * @param _buyer The address of the account which will receive the NFT upon success.
-   * @param _seller The address of the account which will sell the NFT upon success.
+   * @dev Redeems a mint voucher. Lazy mints the item if it not exists and transfers the item to the buyer.
    * @param _amountToPurchase Amount of items to be purchased
    * @param _mintVoucher A signed MintVoucher that describes the NFT to be redeemed.
    */
-  function redeemItem(
-    address _buyer,
-    address _seller,
+  function redeemMintVoucher(
     uint256 _amountToPurchase,
     MintVoucher calldata _mintVoucher
   ) public payable nonReentrant {
-    console.log("REDEEMITEM STARTING....");
     require(
-      isVoucherInvalid[_mintVoucher.signature] == false,
-      "RedeemItem: Voucher invalid"
-    );
-    require(
-      _mintVoucher.validUntil > block.timestamp,
-      "RedeemItem: Timestamp exceeded"
-    );
-
-    require(
-      _mintVoucher.supply >=
-        _amountToPurchase.add(voucherAmountSold[_mintVoucher.signature]),
-      "redeemItem: Not enough supply"
+      _validateVoucher(_mintVoucher, _amountToPurchase) == true,
+      "Signature is invalid."
     );
 
     initializeContracts();
 
-    uint256 purchasePrice;
-    address nftContractAddress;
-    if (_mintVoucher.isMaster == true) {
-      nftContractAddress = masterAddress;
-    } else {
-      nftContractAddress = licenseAddress;
-    }
+    address _signer = _getVoucherSigner(_mintVoucher);
+    address _buyer = msg.sender;
 
-    address _signer = _verify(_mintVoucher);
-    purchasePrice = approvePurchase(
-      _seller,
-      _signer,
+    uint256 purchasePrice = approvePurchase(
       _mintVoucher.price,
-      _mintVoucher.isMaster,
       _amountToPurchase
     );
 
-    // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
     uint256 tokenId = masterContract.getTokenIdForURI(_mintVoucher.tokenUri);
 
-    require(tokenId == 0, "TokenId must not exist");
-    sellItemOnPrimarySale(
-      purchasePrice,
-      _signer,
-      _buyer,
-      _amountToPurchase,
-      _mintVoucher
-    );
+    if (tokenId == 0) {
+      tokenId = mintItem(_signer, _mintVoucher);
+    }
 
-    uint256 calculatedServiceFees = calculateServiceFees(
-      _mintVoucher.price,
-      serviceFees()
+    payAndTransfer(
+      tokenId,
+      _buyer,
+      _signer,
+      purchasePrice,
+      _amountToPurchase,
+      _mintVoucher.isMaster
     );
 
     voucherAmountSold[_mintVoucher.signature] = voucherAmountSold[
       _mintVoucher.signature
     ].add(_amountToPurchase);
 
-    emit RedeemedItem(_mintVoucher.signature, _amountToPurchase);
-
     if (voucherAmountSold[_mintVoucher.signature] == _mintVoucher.supply) {
       isVoucherInvalid[_mintVoucher.signature] = false;
     }
 
-    withdrawFees(calculatedServiceFees);
+    emit RedeemedItem(_mintVoucher.signature, _buyer, _amountToPurchase);
   }
 
   /**
-   * @dev Creates the sale of a marketplace item, transfers ownership of the item, as well as funds between parties
-   * @param _buyer The address of the account which will receive the NFT upon success.
-   * @param _seller The address of the account which will sell the NFT upon success.
+   * @dev Redeems a sale voucher.
    * @param _amountToPurchase Amount of items to be purchased
-   * @param _saleVoucher A signed SaleVoucher that describes the NFT to be redeemed.
+   * @param _saleVoucher A signed MintVoucher that describes the NFT to be redeemed.
    */
-  function redeemItemSecondarySale(
-    address _buyer,
-    address _seller,
+  function redeemSaleVoucher(
     uint256 _amountToPurchase,
     SaleVoucher calldata _saleVoucher
   ) public payable nonReentrant {
-    console.log("REDEEMITEM STARTING....");
     require(
-      isVoucherInvalid[_saleVoucher.signature] == false,
-      "RedeemItem: Voucher invalid"
+      _validateVoucher(_saleVoucher, _amountToPurchase) == true,
+      "Signature is invalid."
     );
 
-    require(
-      _saleVoucher.validUntil > block.timestamp,
-      "RedeemItem: Timestamp exceeded"
-    );
+    initializeContracts();
 
-    require(
-      _saleVoucher.supply >=
-        _amountToPurchase.add(voucherAmountSold[_saleVoucher.signature]),
-      "redeemItemSecondarySale: Not enough supply"
-    );
+    address _signer = _getVoucherSigner(_saleVoucher);
+    address _buyer = msg.sender;
 
-    uint256 purchasePrice;
-
-    address _signer = _verify(_saleVoucher);
-    purchasePrice = approvePurchase(
-      _seller,
-      _signer,
+    uint256 purchasePrice = approvePurchase(
       _saleVoucher.price,
-      _saleVoucher.isMaster,
       _amountToPurchase
     );
 
-    // Mints an NFT if it doesnt exist at the time of buying (Lazy minting)
     uint256 tokenId = masterContract.getTokenIdForURI(_saleVoucher.tokenUri);
-    sellItemOnSecondarySale(
-      tokenId,
-      purchasePrice,
-      _signer,
-      _buyer,
-      _amountToPurchase,
-      _saleVoucher
-    );
 
-    uint256 calculatedServiceFees = calculateServiceFees(
-      _saleVoucher.price,
-      serviceFees()
+    payAndTransfer(
+      tokenId,
+      _buyer,
+      _signer,
+      purchasePrice,
+      _amountToPurchase,
+      _saleVoucher.isMaster
     );
 
     voucherAmountSold[_saleVoucher.signature] = voucherAmountSold[
       _saleVoucher.signature
     ].add(_amountToPurchase);
 
-    emit RedeemedItemSecondarySale(_saleVoucher.signature, _amountToPurchase);
-
     if (voucherAmountSold[_saleVoucher.signature] == _saleVoucher.supply) {
       isVoucherInvalid[_saleVoucher.signature] = false;
     }
 
-    withdrawFees(calculatedServiceFees);
+    emit RedeemedItemSecondarySale(
+      _saleVoucher.signature,
+      _buyer,
+      _amountToPurchase
+    );
   }
 
   /**
-   * @dev Function called for lazy minting and primary sales
-   * @param purchasePrice Price of the NFT to purchase
+   * @notice Checks for the base requirements and returns true, if all conditions are met.
+   * @param voucher An Voucher describing an unminted or minted NFT.
+   * @param amountToPurchase Supply, buyer wants to purchase.
+   */
+  function _validateVoucher(
+    MintVoucher calldata voucher,
+    uint256 amountToPurchase
+  ) internal view returns (bool) {
+    require(
+      isVoucherInvalid[voucher.signature] == false,
+      "Voucher invalidated."
+    );
+    require(
+      voucher.validUntil > block.timestamp,
+      "Voucher timestamp exceeded."
+    );
+
+    require(
+      voucher.supply >=
+        amountToPurchase.add(voucherAmountSold[voucher.signature]),
+      "Not enough supply."
+    );
+
+    return true;
+  }
+
+  function _validateVoucher(
+    SaleVoucher calldata voucher,
+    uint256 amountToPurchase
+  ) internal view returns (bool) {
+    require(
+      isVoucherInvalid[voucher.signature] == false,
+      "Voucher invalidated."
+    );
+    require(
+      voucher.validUntil > block.timestamp,
+      "Voucher timestamp exceeded."
+    );
+    require(
+      voucher.supply >=
+        amountToPurchase.add(voucherAmountSold[voucher.signature]),
+      "Not enough supply."
+    );
+
+    return true;
+  }
+
+  /**
+   * @dev Lazy mints the item
    * @param _signer The address of the account which will sell the NFT upon success.
-   * @param _buyer The address of the account which will receive the NFT upon success.
-   * @param _amountToPurchase Amount of items to be purchased
    * @param _mintVoucher A signed MintVoucher that describes the NFT to be redeemed.
    */
-  function sellItemOnPrimarySale(
-    uint256 purchasePrice,
-    address _signer,
-    address _buyer,
-    uint256 _amountToPurchase,
-    MintVoucher calldata _mintVoucher
-  ) internal {
-    console.log("CREATE MASTER ITEM about to be called....");
+  function mintItem(address _signer, MintVoucher calldata _mintVoucher)
+    internal
+    returns (uint256)
+  {
     uint256 tokenId = masterContract.createMasterItem(
       _signer,
       _mintVoucher.tokenUri,
@@ -276,97 +271,32 @@ contract MarketContract is
       _mintVoucher.creatorOwnerSplit
     );
 
-    payAndTransfer(
-      tokenId,
-      _buyer,
-      _signer,
-      purchasePrice,
-      _amountToPurchase,
-      _mintVoucher.isMaster
-    );
-  }
-
-  /**
-   * @dev Function called for secondary sales
-   * @param _tokenId ID of the NFT to purchase
-   * @param purchasePrice Price of the NFT to purchase
-   * @param _signer The address of the account which will sell the NFT upon success.
-   * @param _buyer The address of the account which will receive the NFT upon success.
-   * @param _amountToPurchase Amount of items to be purchased
-   * @param _saleVoucher A signed SaleVoucher that describes the NFT to be redeemed.
-   */
-  function sellItemOnSecondarySale(
-    uint256 _tokenId,
-    uint256 purchasePrice,
-    address _signer,
-    address _buyer,
-    uint256 _amountToPurchase,
-    SaleVoucher calldata _saleVoucher
-  ) internal {
-    console.log("PURCHASENFT: Royalty Info STARTING....");
-
-    payAndTransfer(
-      _tokenId,
-      _buyer,
-      _signer,
-      purchasePrice,
-      _amountToPurchase,
-      _saleVoucher.isMaster
-    );
+    return tokenId;
   }
 
   /**
    * @dev Monetary checklist for purchasing NFTs, will return purchase price
-   * @param _seller The address of the account which will sell the NFT upon success.
-   * @param _signer The address of the account which will sell the NFT upon success.
    * @param _price Price to be paid for NFT.
-   * @param _isMaster Indicates if NFT is master.
    * @param _amountToPurchase Amount of items to be purchased
-
    */
-  function approvePurchase(
-    address _seller,
-    address _signer,
-    uint256 _price,
-    bool _isMaster,
-    uint256 _amountToPurchase
-  ) internal returns (uint256) {
-    uint256 totalPurchase = msg.value;
-    require(totalPurchase > 0, "No amount being transferred");
+  function approvePurchase(uint256 _price, uint256 _amountToPurchase)
+    internal
+    returns (uint256)
+  {
+    uint256 valueTransmitted = msg.value;
 
-    // make sure that the signer of the Voucher is the seller
-    require(_seller == _signer, "Signature invalid");
-
-    uint256 purchaseFees = serviceFees();
-
-    uint256 calculatedServiceFees = calculateServiceFees(_price, purchaseFees);
-
-    // Total amount to pay with service fees
-    uint256 purchasePriceWithServiceFee;
-    if (_isMaster == true) {
-      purchasePriceWithServiceFee = calculateAmountToPay(
-        _price,
-        calculatedServiceFees,
-        1
-      );
-    } else {
-      purchasePriceWithServiceFee = calculateAmountToPay(
-        _price,
-        calculatedServiceFees,
-        _amountToPurchase
-      );
-    }
-    uint256 purchasePrice = purchasePriceWithServiceFee.sub(
-      calculatedServiceFees
+    uint256 totalPriceWithServiceFees = calculateTotalPriceWithServiceFees(
+      _price,
+      _amountToPurchase
     );
 
     // make sure that the redeemer is paying enough to cover the buyer's cost
     require(
-      totalPurchase >= purchasePriceWithServiceFee,
-      "Insufficient funds to redeem"
+      valueTransmitted >= totalPriceWithServiceFees,
+      "Insufficient funds to redeem."
     );
 
-    return purchasePrice;
+    return totalPriceWithServiceFees;
   }
 
   /**
@@ -386,13 +316,14 @@ contract MarketContract is
     uint256 _amountToPurchase,
     bool _isMaster
   ) internal {
-    require(_tokenId != 0, "NFT could not be minted");
+    require(_tokenId != 0, "TokenId cannot be 0.");
+
     // Transfer NFTS
     uint256 licensesAmountFromSigner;
-
     uint256 royaltyAmountCreator;
     uint256 royaltyAmountOwner;
     uint256 restSalePrice;
+
     if (_isMaster == true) {
       (royaltyAmountCreator, restSalePrice) = _royaltySplitMaster(
         _tokenId,
@@ -418,7 +349,6 @@ contract MarketContract is
         _tokenId,
         licensesAmountFromSigner
       );
-      itemsSold.increment();
     } else {
       (
         royaltyAmountCreator,
@@ -447,16 +377,17 @@ contract MarketContract is
 
   /**
    * @dev Calculates the services fees
-   * @param _mintVoucherPrice Price to be paid by the buyer
-   * @param purchaseFees Fees to be paid by the buyer
+   * @param _price Price to be paid by the buyer
+   * @param _amount Amount the buyer wishes to purchase
    */
-  function calculateServiceFees(uint256 _mintVoucherPrice, uint256 purchaseFees)
+  function calculateTotalPriceWithServiceFees(uint256 _price, uint256 _amount)
     internal
-    pure
+    view
     returns (uint256)
   {
-    return
-      PercentageUtils.percentageCalculatorDiv(_mintVoucherPrice, purchaseFees);
+    uint256 serviceFees = getServiceFees();
+    uint256 priceWithServiceFees = _price.mul(serviceFees).div(100000);
+    return _price.mul(_amount).add((priceWithServiceFees.mul(_amount)));
   }
 
   /**
@@ -474,7 +405,7 @@ contract MarketContract is
   /**
    * @dev Returns service fees
    */
-  function serviceFees() public view returns (uint256) {
+  function getServiceFees() public view returns (uint256) {
     return _serviceFees;
   }
 
@@ -564,24 +495,11 @@ contract MarketContract is
   }
 
   /**
-   * @notice Returns the chain id of the current blockchain.
-   * @dev This is used to workaround an issue with ganache returning different values from the on-chain chainid() function and
-   * the eth_chainId RPC method. See https://github.com/protocol/nft-website/issues/121 for context.
-   */
-  function getChainID() external view returns (uint256) {
-    uint256 id;
-    assembly {
-      id := chainid()
-    }
-    return id;
-  }
-
-  /**
    * @notice Verifies the signature for a given Voucher, returning the address of the signer.
    * @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
    * @param voucher An Voucher describing an unminted or minted NFT.
    */
-  function _verify(MintVoucher calldata voucher)
+  function _getVoucherSigner(MintVoucher calldata voucher)
     internal
     view
     returns (address)
@@ -590,7 +508,7 @@ contract MarketContract is
     return ECDSA.recover(digest, voucher.signature);
   }
 
-  function _verify(SaleVoucher calldata voucher)
+  function _getVoucherSigner(SaleVoucher calldata voucher)
     internal
     view
     returns (address)

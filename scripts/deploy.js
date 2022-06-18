@@ -1,16 +1,11 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
-const config = require('../utils.config.json');
+const config = require("../utils.config.json");
 
 async function main() {
   const commonUtilsAddress = config.commonUtils;
-  const percentageUtilsLibAddress = config.percentageUtilsLib;
 
-  const MarketContract = await ethers.getContractFactory("MarketContract", {
-    libraries: {
-      PercentageUtils: percentageUtilsLibAddress,
-    },
-  });
+  const MarketContract = await ethers.getContractFactory("MarketContract");
 
   const CommonUtils = await ethers.getContractFactory("CommonUtils");
   const utils = await CommonUtils.attach(commonUtilsAddress);
@@ -28,13 +23,12 @@ async function main() {
   await master.deployed();
   await utils.setContractAddressFor("Master", master.address);
   console.log("Master deployed to:", master.address);
-  
-  console.log("Deploying Market contract")
+
+  console.log("Deploying Market contract");
   const marketContract = await MarketContract.deploy(commonUtilsAddress);
   await marketContract.deployed();
   await utils.setContractAddressFor("MarketContract", marketContract.address);
   console.log("NFT Market contract deployed to:", marketContract.address);
-  
 }
 
 main()

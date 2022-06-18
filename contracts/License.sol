@@ -39,7 +39,7 @@ contract License is
     commonUtils = ICommonUtils(_commonUtilsAddress);
   }
 
-   /**
+  /**
    * @dev Creators
    */
   mapping(uint256 => address) public _creators;
@@ -88,13 +88,7 @@ contract License is
     _licenseBundleId.increment();
     uint256 currentLicenseBundleId = _licenseBundleId.current();
 
-    mint(
-      _signer,
-      currentLicenseBundleId,
-      _mintURI,
-      _amount,
-      _erc721Reference
-    );
+    mint(_signer, currentLicenseBundleId, _mintURI, _amount, _erc721Reference);
   }
 
   /**
@@ -227,5 +221,4 @@ contract License is
   {
     return balanceOf(_account, _tokenId);
   }
-
 }
