@@ -49,12 +49,8 @@ contract MarketContract is
   // Events
   event Withdrawal(address _payee, uint256 _amount);
   event UnlistedNFT(bytes signature);
-  event RedeemedItem(bytes signature, address buyer, uint256 soldAmount);
-  event RedeemedItemSecondarySale(
-    bytes signature,
-    address buyer,
-    uint256 soldAmount
-  );
+  event RedeemedMintVoucher(bytes signature, address buyer, uint256 soldAmount);
+  event RedeemedSaleVoucher(bytes signature, address buyer, uint256 soldAmount);
 
   // Vouchers
   struct MintVoucher {
@@ -148,7 +144,7 @@ contract MarketContract is
       isVoucherInvalid[_mintVoucher.signature] = false;
     }
 
-    emit RedeemedItem(_mintVoucher.signature, _buyer, _amountToPurchase);
+    emit RedeemedMintVoucher(_mintVoucher.signature, _buyer, _amountToPurchase);
   }
 
   /**
@@ -194,11 +190,7 @@ contract MarketContract is
       isVoucherInvalid[_saleVoucher.signature] = false;
     }
 
-    emit RedeemedItemSecondarySale(
-      _saleVoucher.signature,
-      _buyer,
-      _amountToPurchase
-    );
+    emit RedeemedSaleVoucher(_saleVoucher.signature, _buyer, _amountToPurchase);
   }
 
   /**
