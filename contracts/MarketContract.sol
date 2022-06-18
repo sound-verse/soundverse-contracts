@@ -86,7 +86,7 @@ contract MarketContract is
     commonUtils = ICommonUtils(_commonUtilsAddress);
     RoyaltyManager royaltyManager = new RoyaltyManager();
     royaltyManagerAddress = address(royaltyManager);
-        licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
+    licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
     masterAddress = commonUtils.getContractAddressFrom(MASTER);
   }
 
@@ -114,7 +114,9 @@ contract MarketContract is
       _amountToPurchase
     );
 
-    uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(_mintVoucher.tokenUri);
+    uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(
+      _mintVoucher.tokenUri
+    );
 
     if (tokenId == 0) {
       tokenId = mintItem(_signer, _mintVoucher);
@@ -164,7 +166,9 @@ contract MarketContract is
       _amountToPurchase
     );
 
-    uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(_saleVoucher.tokenUri);
+    uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(
+      _saleVoucher.tokenUri
+    );
 
     payAndTransfer(
       tokenId,
@@ -540,7 +544,11 @@ contract MarketContract is
     view
     returns (uint256, uint256)
   {
-    return RoyaltyManager(royaltyManagerAddress).royaltySplitMaster(_tokenId, _salePrice);
+    return
+      RoyaltyManager(royaltyManagerAddress).royaltySplitMaster(
+        _tokenId,
+        _salePrice
+      );
   }
 
   function _royaltySplitLicense(uint256 _tokenId, uint256 _salePrice)
@@ -552,6 +560,10 @@ contract MarketContract is
       uint256
     )
   {
-    return RoyaltyManager(royaltyManagerAddress).royaltySplitLicense(_tokenId, _salePrice);
+    return
+      RoyaltyManager(royaltyManagerAddress).royaltySplitLicense(
+        _tokenId,
+        _salePrice
+      );
   }
 }

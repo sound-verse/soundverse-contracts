@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./interfaces/IRoyaltyManager.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract RoyaltyManager is IRoyaltyManager {
+contract RoyaltyManager {
   using SafeMath for uint256;
 
   struct RoyaltySplit {
@@ -15,15 +14,13 @@ contract RoyaltyManager is IRoyaltyManager {
 
   mapping(uint256 => RoyaltySplit) private _tokenRoyaltySplit;
 
-  function _splitFeeDenominator() internal pure virtual returns (uint96) {
+  function _splitFeeDenominator() internal pure returns (uint96) {
     return 10000;
   }
 
   function royaltySplitMaster(uint256 _tokenId, uint256 _salePrice)
     public
     view
-    virtual
-    override
     returns (uint256, uint256)
   {
     RoyaltySplit memory royalty = _tokenRoyaltySplit[_tokenId];
@@ -39,8 +36,6 @@ contract RoyaltyManager is IRoyaltyManager {
   function royaltySplitLicense(uint256 _tokenId, uint256 _salePrice)
     public
     view
-    virtual
-    override
     returns (
       uint256,
       uint256,
