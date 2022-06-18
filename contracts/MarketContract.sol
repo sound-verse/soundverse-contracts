@@ -107,14 +107,16 @@ contract MarketContract is
     MintVoucher calldata _mintVoucher
   ) public payable nonReentrant {
     require(
-      _validateVoucher(_mintVoucher, _amountToPurchase) == true,
+      _validateMintVoucher(_mintVoucher, _amountToPurchase) == true,
       "Signature is invalid."
     );
 
     initializeContracts();
 
-    address _signer = _getVoucherSigner(_mintVoucher);
+    address _signer = _getMintVoucherSigner(_mintVoucher);
     address _buyer = msg.sender;
+
+    require(_signer != _buyer, "Seller is buyer.");
 
     uint256 purchasePrice = approvePurchase(
       _mintVoucher.price,
@@ -157,14 +159,16 @@ contract MarketContract is
     SaleVoucher calldata _saleVoucher
   ) public payable nonReentrant {
     require(
-      _validateVoucher(_saleVoucher, _amountToPurchase) == true,
+      _validateSaleVoucher(_saleVoucher, _amountToPurchase) == true,
       "Signature is invalid."
     );
 
     initializeContracts();
 
-    address _signer = _getVoucherSigner(_saleVoucher);
+    address _signer = _getSaleVoucherSigner(_saleVoucher);
     address _buyer = msg.sender;
+
+    require(_signer != _buyer, "Seller is buyer.");
 
     uint256 purchasePrice = approvePurchase(
       _saleVoucher.price,
@@ -195,46 +199,51 @@ contract MarketContract is
 
   /**
    * @notice Checks for the base requirements and returns true, if all conditions are met.
-   * @param voucher An Voucher describing an unminted or minted NFT.
+   * @param _mintVoucher An Voucher describing an unminted or minted NFT.
    * @param amountToPurchase Supply, buyer wants to purchase.
    */
-  function _validateVoucher(
-    MintVoucher calldata voucher,
+  function _validateMintVoucher(
+    MintVoucher calldata _mintVoucher,
     uint256 amountToPurchase
   ) internal view returns (bool) {
     require(
-      isVoucherInvalid[voucher.signature] == false,
+      isVoucherInvalid[_mintVoucher.signature] == false,
       "Voucher invalidated."
     );
     require(
-      voucher.validUntil > block.timestamp,
+      _mintVoucher.validUntil > block.timestamp,
       "Voucher timestamp exceeded."
     );
 
     require(
-      voucher.supply >=
-        amountToPurchase.add(voucherAmountSold[voucher.signature]),
+      _mintVoucher.supply >=
+        amountToPurchase.add(voucherAmountSold[_mintVoucher.signature]),
       "Not enough supply."
     );
 
     return true;
   }
 
-  function _validateVoucher(
-    SaleVoucher calldata voucher,
+  /**
+   * @notice Checks for the base requirements and returns true, if all conditions are met.
+   * @param _saleVoucher An Voucher describing an unminted or minted NFT.
+   * @param amountToPurchase Supply, buyer wants to purchase.
+   */
+  function _validateSaleVoucher(
+    SaleVoucher calldata _saleVoucher,
     uint256 amountToPurchase
   ) internal view returns (bool) {
     require(
-      isVoucherInvalid[voucher.signature] == false,
+      isVoucherInvalid[_saleVoucher.signature] == false,
       "Voucher invalidated."
     );
     require(
-      voucher.validUntil > block.timestamp,
+      _saleVoucher.validUntil > block.timestamp,
       "Voucher timestamp exceeded."
     );
     require(
-      voucher.supply >=
-        amountToPurchase.add(voucherAmountSold[voucher.signature]),
+      _saleVoucher.supply >=
+        amountToPurchase.add(voucherAmountSold[_saleVoucher.signature]),
       "Not enough supply."
     );
 
@@ -437,9 +446,13 @@ contract MarketContract is
 
   /**
    * @notice Returns a hash of the given Voucher, prepared using EIP712 typed data hashing rules.
-   * @param voucher An MintVoucher to hash.
+   * @param _mintVoucher An MintVoucher to hash.
    */
-  function _hash(MintVoucher calldata voucher) internal view returns (bytes32) {
+  function _hashMintVoucher(MintVoucher calldata _mintVoucher)
+    internal
+    view
+    returns (bytes32)
+  {
     return
       _hashTypedDataV4(
         keccak256(
@@ -447,16 +460,16 @@ contract MarketContract is
             keccak256(
               "SVVoucher(uint256 price,string tokenUri,uint256 supply,uint256 maxSupply,bool isMaster,string currency,uint96 royaltyFeeMaster,uint96 royaltyFeeLicense,uint96 creatorOwnerSplit,uint256 validUntil)"
             ),
-            voucher.price,
-            keccak256(bytes(voucher.tokenUri)),
-            voucher.supply,
-            voucher.maxSupply,
-            voucher.isMaster,
-            keccak256(bytes(voucher.currency)),
-            voucher.royaltyFeeMaster,
-            voucher.royaltyFeeLicense,
-            voucher.creatorOwnerSplit,
-            voucher.validUntil
+            _mintVoucher.price,
+            keccak256(bytes(_mintVoucher.tokenUri)),
+            _mintVoucher.supply,
+            _mintVoucher.maxSupply,
+            _mintVoucher.isMaster,
+            keccak256(bytes(_mintVoucher.currency)),
+            _mintVoucher.royaltyFeeMaster,
+            _mintVoucher.royaltyFeeLicense,
+            _mintVoucher.creatorOwnerSplit,
+            _mintVoucher.validUntil
           )
         )
       );
@@ -464,9 +477,13 @@ contract MarketContract is
 
   /**
    * @notice Returns a hash of the given Voucher, prepared using EIP712 typed data hashing rules.
-   * @param voucher An SaleVoucher to hash.
+   * @param _saleVoucher An SaleVoucher to hash.
    */
-  function _hash(SaleVoucher calldata voucher) internal view returns (bytes32) {
+  function _hashSaleVoucher(SaleVoucher calldata _saleVoucher)
+    internal
+    view
+    returns (bytes32)
+  {
     return
       _hashTypedDataV4(
         keccak256(
@@ -474,13 +491,13 @@ contract MarketContract is
             keccak256(
               "SVVoucher(address nftContractAddress,uint256 price,string tokenUri,uint256 supply,bool isMaster,string currency,uint256 validUntil)"
             ),
-            voucher.nftContractAddress,
-            voucher.price,
-            keccak256(bytes(voucher.tokenUri)),
-            voucher.supply,
-            voucher.isMaster,
-            keccak256(bytes(voucher.currency)),
-            voucher.validUntil
+            _saleVoucher.nftContractAddress,
+            _saleVoucher.price,
+            keccak256(bytes(_saleVoucher.tokenUri)),
+            _saleVoucher.supply,
+            _saleVoucher.isMaster,
+            keccak256(bytes(_saleVoucher.currency)),
+            _saleVoucher.validUntil
           )
         )
       );
@@ -489,24 +506,29 @@ contract MarketContract is
   /**
    * @notice Verifies the signature for a given Voucher, returning the address of the signer.
    * @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
-   * @param voucher An Voucher describing an unminted or minted NFT.
+   * @param _mintVoucher An Voucher describing an unminted or minted NFT.
    */
-  function _getVoucherSigner(MintVoucher calldata voucher)
+  function _getMintVoucherSigner(MintVoucher calldata _mintVoucher)
     internal
     view
     returns (address)
   {
-    bytes32 digest = _hash(voucher);
-    return ECDSA.recover(digest, voucher.signature);
+    bytes32 digest = _hashMintVoucher(_mintVoucher);
+    return ECDSA.recover(digest, _mintVoucher.signature);
   }
 
-  function _getVoucherSigner(SaleVoucher calldata voucher)
+  /**
+   * @notice Verifies the signature for a given Voucher, returning the address of the signer.
+   * @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
+   * @param _saleVoucher An Voucher describing an unminted or minted NFT.
+   */
+  function _getSaleVoucherSigner(SaleVoucher calldata _saleVoucher)
     internal
     view
     returns (address)
   {
-    bytes32 digest = _hash(voucher);
-    return ECDSA.recover(digest, voucher.signature);
+    bytes32 digest = _hashSaleVoucher(_saleVoucher);
+    return ECDSA.recover(digest, _saleVoucher.signature);
   }
 
   // Royalties
