@@ -6,7 +6,6 @@ import "./CommonUtils.sol";
 import "./interfaces/IMaster.sol";
 import "./interfaces/ILicense.sol";
 import "./RoyaltyManager.sol";
-import "./interfaces/IRoyaltyManager.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
