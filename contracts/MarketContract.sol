@@ -41,8 +41,6 @@ contract MarketContract is
 
   //Contracts
   ICommonUtils public commonUtils;
-  ILicense public licensesContract;
-  IMaster public masterContract;
   address internal licenseAddress;
   address internal masterAddress;
   address public royaltyManagerAddress;
@@ -88,16 +86,8 @@ contract MarketContract is
     commonUtils = ICommonUtils(_commonUtilsAddress);
     RoyaltyManager royaltyManager = new RoyaltyManager();
     royaltyManagerAddress = address(royaltyManager);
-  }
-
-  /**
-   * @dev Initializes the contracts with respective interfaces
-   */
-  function initializeContracts() internal {
-    licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
+        licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
     masterAddress = commonUtils.getContractAddressFrom(MASTER);
-    licensesContract = ILicense(licenseAddress);
-    masterContract = IMaster(masterAddress);
   }
 
   /**
@@ -114,8 +104,6 @@ contract MarketContract is
       "Signature is invalid."
     );
 
-    initializeContracts();
-
     address _signer = _getMintVoucherSigner(_mintVoucher);
     address _buyer = msg.sender;
 
@@ -126,7 +114,7 @@ contract MarketContract is
       _amountToPurchase
     );
 
-    uint256 tokenId = masterContract.getTokenIdForURI(_mintVoucher.tokenUri);
+    uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(_mintVoucher.tokenUri);
 
     if (tokenId == 0) {
       tokenId = mintItem(_signer, _mintVoucher);
@@ -166,8 +154,6 @@ contract MarketContract is
       "Signature is invalid."
     );
 
-    initializeContracts();
-
     address _signer = _getSaleVoucherSigner(_saleVoucher);
     address _buyer = msg.sender;
 
@@ -178,7 +164,7 @@ contract MarketContract is
       _amountToPurchase
     );
 
-    uint256 tokenId = masterContract.getTokenIdForURI(_saleVoucher.tokenUri);
+    uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(_saleVoucher.tokenUri);
 
     payAndTransfer(
       tokenId,
@@ -262,7 +248,7 @@ contract MarketContract is
     internal
     returns (uint256)
   {
-    uint256 tokenId = masterContract.createMasterItem(
+    uint256 tokenId = IMaster(masterAddress).createMasterItem(
       _signer,
       _mintVoucher.tokenUri,
       _mintVoucher.maxSupply
@@ -334,7 +320,7 @@ contract MarketContract is
         _purchasePrice
       );
 
-      address creator = masterContract._getCreator(_tokenId);
+      address creator = IMaster(masterAddress)._getCreator(_tokenId);
 
       payable(creator).transfer(royaltyAmountCreator);
 
@@ -342,12 +328,12 @@ contract MarketContract is
       payable(_signer).transfer(restSalePrice);
 
       // Transfer master and license(s) to buyer
-      masterContract.transferMaster(_signer, _buyer, _tokenId);
-      licensesAmountFromSigner = licensesContract.licensesBalanceOf(
+      IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
+      licensesAmountFromSigner = ILicense(licenseAddress).licensesBalanceOf(
         _signer,
         _tokenId
       );
-      licensesContract.transferLicenses(
+      ILicense(licenseAddress).transferLicenses(
         _signer,
         _buyer,
         _tokenId,
@@ -360,8 +346,8 @@ contract MarketContract is
         restSalePrice
       ) = _royaltySplitLicense(_tokenId, _purchasePrice);
 
-      address creator = licensesContract._getCreator(_tokenId);
-      address owner = masterContract._getOwner(_tokenId);
+      address creator = ILicense(licenseAddress)._getCreator(_tokenId);
+      address owner = IMaster(masterAddress)._getOwner(_tokenId);
 
       payable(creator).transfer(royaltyAmountCreator);
       payable(owner).transfer(royaltyAmountOwner);
@@ -370,7 +356,7 @@ contract MarketContract is
       payable(_signer).transfer(restSalePrice);
 
       // Transfer license(s) to buyer
-      licensesContract.transferLicenses(
+      ILicense(licenseAddress).transferLicenses(
         _signer,
         _buyer,
         _tokenId,
