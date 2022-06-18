@@ -6,6 +6,7 @@ import "./CommonUtils.sol";
 import "./interfaces/IMaster.sol";
 import "./interfaces/ILicense.sol";
 import "./RoyaltyManager.sol";
+import "./interfaces/IRoyaltyManager.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -20,8 +21,7 @@ contract MarketContract is
   AccessControlEnumerable,
   EIP712,
   Ownable,
-  ReentrancyGuard,
-  RoyaltyManager
+  ReentrancyGuard
 {
   using Counters for Counters.Counter;
   using SafeMath for uint256;
@@ -45,6 +45,7 @@ contract MarketContract is
   IMaster public masterContract;
   address internal licenseAddress;
   address internal masterAddress;
+  address public royaltyManagerAddress;
 
   // Events
   event Withdrawal(address _payee, uint256 _amount);
@@ -85,6 +86,8 @@ contract MarketContract is
     admin = payable(owner());
     _serviceFees = 3000;
     commonUtils = ICommonUtils(_commonUtilsAddress);
+    RoyaltyManager royaltyManager = new RoyaltyManager();
+    royaltyManagerAddress = address(royaltyManager);
   }
 
   /**
@@ -538,7 +541,7 @@ contract MarketContract is
     uint96 royaltyFeeLicense,
     uint96 creatorOwnerRoyaltySplit
   ) internal {
-    setTokenRoyaltySplit(
+    RoyaltyManager(royaltyManagerAddress).setTokenRoyaltySplit(
       tokenId,
       royaltyFeeMaster,
       royaltyFeeLicense,
@@ -551,7 +554,7 @@ contract MarketContract is
     view
     returns (uint256, uint256)
   {
-    return royaltySplitMaster(_tokenId, _salePrice);
+    return RoyaltyManager(royaltyManagerAddress).royaltySplitMaster(_tokenId, _salePrice);
   }
 
   function _royaltySplitLicense(uint256 _tokenId, uint256 _salePrice)
@@ -563,6 +566,6 @@ contract MarketContract is
       uint256
     )
   {
-    return royaltySplitLicense(_tokenId, _salePrice);
+    return RoyaltyManager(royaltyManagerAddress).royaltySplitLicense(_tokenId, _salePrice);
   }
 }

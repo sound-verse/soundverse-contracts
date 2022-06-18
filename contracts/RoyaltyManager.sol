@@ -3,9 +3,8 @@ pragma solidity ^0.8.4;
 
 import "./interfaces/IRoyaltyManager.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-abstract contract RoyaltyManager is ERC165, IRoyaltyManager {
+contract RoyaltyManager is IRoyaltyManager {
   using SafeMath for uint256;
 
   struct RoyaltySplit {
@@ -68,7 +67,7 @@ abstract contract RoyaltyManager is ERC165, IRoyaltyManager {
     uint96 royaltyFeeMaster,
     uint96 royaltyFeeLicense,
     uint96 creatorOwnerRoyaltySplit
-  ) internal virtual {
+  ) external {
     require(
       royaltyFeeMaster <= _splitFeeDenominator(),
       "RoyaltyManager: royalties cannot be more then 100%"
