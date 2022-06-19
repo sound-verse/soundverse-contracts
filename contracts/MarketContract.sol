@@ -20,7 +20,8 @@ contract MarketContract is
   AccessControlEnumerable,
   EIP712,
   Ownable,
-  ReentrancyGuard
+  ReentrancyGuard,
+  RoyaltyManager
 {
   using Counters for Counters.Counter;
   using SafeMath for uint256;
@@ -42,7 +43,6 @@ contract MarketContract is
   ICommonUtils public commonUtils;
   address internal licenseAddress;
   address internal masterAddress;
-  address public royaltyManagerAddress;
 
   // Events
   event Withdrawal(address _payee, uint256 _amount);
@@ -83,8 +83,9 @@ contract MarketContract is
     admin = payable(owner());
     _serviceFees = 3000;
     commonUtils = ICommonUtils(_commonUtilsAddress);
-    RoyaltyManager royaltyManager = new RoyaltyManager();
-    royaltyManagerAddress = address(royaltyManager);
+  }
+
+  function fillContractAddresses() internal {
     licenseAddress = commonUtils.getContractAddressFrom(LICENSE);
     masterAddress = commonUtils.getContractAddressFrom(MASTER);
   }
@@ -102,6 +103,10 @@ contract MarketContract is
       _validateMintVoucher(_mintVoucher, _amountToPurchase) == true,
       "Signature is invalid."
     );
+
+    if (licenseAddress == address(0) || masterAddress == address(0)) {
+      fillContractAddresses();
+    }
 
     address _signer = _getMintVoucherSigner(_mintVoucher);
     address _buyer = msg.sender;
@@ -530,7 +535,7 @@ contract MarketContract is
     uint96 royaltyFeeLicense,
     uint96 creatorOwnerRoyaltySplit
   ) internal {
-    RoyaltyManager(royaltyManagerAddress).setTokenRoyaltySplit(
+    setTokenRoyaltySplit(
       tokenId,
       royaltyFeeMaster,
       royaltyFeeLicense,
@@ -543,11 +548,7 @@ contract MarketContract is
     view
     returns (uint256, uint256)
   {
-    return
-      RoyaltyManager(royaltyManagerAddress).royaltySplitMaster(
-        _tokenId,
-        _salePrice
-      );
+    return royaltySplitMaster(_tokenId, _salePrice);
   }
 
   function _royaltySplitLicense(uint256 _tokenId, uint256 _salePrice)
@@ -559,10 +560,6 @@ contract MarketContract is
       uint256
     )
   {
-    return
-      RoyaltyManager(royaltyManagerAddress).royaltySplitLicense(
-        _tokenId,
-        _salePrice
-      );
+    return royaltySplitLicense(_tokenId, _salePrice);
   }
 }

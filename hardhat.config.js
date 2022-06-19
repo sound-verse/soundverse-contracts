@@ -57,9 +57,9 @@ module.exports = {
       chainId: 80001,
       gasMultiplier: 10,
       gas: 8000000,
-      url: process.env.MUMBAI_URL || "",
+      url: process.env.MUMBAI_URL_MATICVIGIL || "",
       // url: "https://rpc-mumbai.maticvigil.com/v1/14f307d73c91cd84b80ce7c71643bfde9b9c92ea",
-      accounts: [process.env.PRIVATE_KEY2]
+      accounts: [process.env.PRIVATE_KEY1]
     },
     fuji: {
       chainId: 43113,

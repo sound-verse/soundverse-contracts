@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract RoyaltyManager {
+abstract contract RoyaltyManager {
   using SafeMath for uint256;
 
   struct RoyaltySplit {
@@ -21,6 +21,7 @@ contract RoyaltyManager {
   function royaltySplitMaster(uint256 _tokenId, uint256 _salePrice)
     public
     view
+    virtual
     returns (uint256, uint256)
   {
     RoyaltySplit memory royalty = _tokenRoyaltySplit[_tokenId];
@@ -36,6 +37,7 @@ contract RoyaltyManager {
   function royaltySplitLicense(uint256 _tokenId, uint256 _salePrice)
     public
     view
+    virtual
     returns (
       uint256,
       uint256,
@@ -62,7 +64,7 @@ contract RoyaltyManager {
     uint96 royaltyFeeMaster,
     uint96 royaltyFeeLicense,
     uint96 creatorOwnerRoyaltySplit
-  ) external {
+  ) public {
     require(
       royaltyFeeMaster <= _splitFeeDenominator(),
       "RoyaltyManager: royalties cannot be more then 100%"
