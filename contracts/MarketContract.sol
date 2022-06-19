@@ -336,11 +336,7 @@ contract MarketContract is
     address _signer,
     uint256 _totalPrice
   ) internal {
-    uint256 licensesAmountFromSigner;
-    uint256 royaltyAmountCreator;
-    uint256 restSalePrice;
-
-    (royaltyAmountCreator, restSalePrice) = _royaltySplitMaster(
+    (uint256 royaltyAmountCreator, uint256 restSalePrice) = _royaltySplitMaster(
       _tokenId,
       _totalPrice
     );
@@ -354,10 +350,8 @@ contract MarketContract is
 
     // Transfer master and license(s) to buyer
     IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
-    licensesAmountFromSigner = ILicense(licenseAddress).licensesBalanceOf(
-      _signer,
-      _tokenId
-    );
+    uint256 licensesAmountFromSigner = ILicense(licenseAddress)
+      .licensesBalanceOf(_signer, _tokenId);
     ILicense(licenseAddress).transferLicenses(
       _signer,
       _buyer,
@@ -373,14 +367,10 @@ contract MarketContract is
     uint256 _totalPrice,
     uint256 _amountToPurchase
   ) internal {
-    uint256 royaltyAmountCreator;
-    uint256 royaltyAmountOwner;
-    uint256 restSalePrice;
-
     (
-      royaltyAmountCreator,
-      royaltyAmountOwner,
-      restSalePrice
+      uint256 royaltyAmountCreator,
+      uint256 royaltyAmountOwner,
+      uint256 restSalePrice
     ) = _royaltySplitLicense(_tokenId, _totalPrice);
 
     address licenseCreator = ILicense(licenseAddress)._getCreator(_tokenId);
