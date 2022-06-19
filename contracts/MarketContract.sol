@@ -309,69 +309,97 @@ contract MarketContract is
   ) internal {
     require(_tokenId != 0, "TokenId cannot be 0.");
 
-    // Transfer NFTS
-    uint256 licensesAmountFromSigner;
-    uint256 royaltyAmountCreator;
-    uint256 royaltyAmountOwner;
-    uint256 restSalePrice;
-
-    (uint256 totalPrice, uint256 caculatedServiceFees) = approvePurchase(
+    (uint256 totalPrice, uint256 calculatedServiceFees) = approvePurchase(
       _price,
       _amountToPurchase
     );
 
     if (_isMaster == true) {
-      (royaltyAmountCreator, restSalePrice) = _royaltySplitMaster(
-        _tokenId,
-        totalPrice
-      );
-
-      address creator = IMaster(masterAddress)._getCreator(_tokenId);
-
-      payable(creator).transfer(royaltyAmountCreator);
-
-      //transfer money to seller
-      payable(_signer).transfer(restSalePrice);
-
-      //transfer service fees
-      payable(admin).transfer(caculatedServiceFees);
-
-      // Transfer master and license(s) to buyer
-      IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
-      licensesAmountFromSigner = ILicense(licenseAddress).licensesBalanceOf(
-        _signer,
-        _tokenId
-      );
-      ILicense(licenseAddress).transferLicenses(
-        _signer,
-        _buyer,
-        _tokenId,
-        licensesAmountFromSigner
-      );
+      payAndTransferMaster(_tokenId, _buyer, _signer, totalPrice, calculatedServiceFees);
     } else {
-      (
-        royaltyAmountCreator,
-        royaltyAmountOwner,
-        restSalePrice
-      ) = _royaltySplitLicense(_tokenId, totalPrice);
-
-      address creator = ILicense(licenseAddress)._getCreator(_tokenId);
-      address owner = IMaster(masterAddress)._getOwner(_tokenId);
-
-      payable(creator).transfer(royaltyAmountCreator);
-      payable(owner).transfer(royaltyAmountOwner);
-
-      //transfer money to seller
-      payable(_signer).transfer(restSalePrice);
-
-      // Transfer license(s) to buyer
-      ILicense(licenseAddress).transferLicenses(
-        _signer,
-        _buyer,
+      payAndTransferLicenses(
         _tokenId,
+        _buyer,
+        _signer,
+        totalPrice,
         _amountToPurchase
       );
     }
+  }
+
+  function payAndTransferMaster(
+    uint256 _tokenId,
+    address _buyer,
+    address _signer,
+    uint256 _totalPrice,
+    uint256 _calculatedServiceFees
+  ) internal {
+    uint256 licensesAmountFromSigner;
+    uint256 royaltyAmountCreator;
+    uint256 restSalePrice;
+
+    (royaltyAmountCreator, restSalePrice) = _royaltySplitMaster(
+      _tokenId,
+      _totalPrice
+    );
+
+    address masterCreator = IMaster(masterAddress)._getCreator(_tokenId);
+
+    payable(masterCreator).transfer(royaltyAmountCreator);
+
+    //transfer money to seller
+    payable(_signer).transfer(restSalePrice);
+
+    //transfer service fees
+    payable(admin).transfer(_calculatedServiceFees);
+
+    // Transfer master and license(s) to buyer
+    IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
+    licensesAmountFromSigner = ILicense(licenseAddress).licensesBalanceOf(
+      _signer,
+      _tokenId
+    );
+    ILicense(licenseAddress).transferLicenses(
+      _signer,
+      _buyer,
+      _tokenId,
+      licensesAmountFromSigner
+    );
+  }
+
+  function payAndTransferLicenses(
+    uint256 _tokenId,
+    address _buyer,
+    address _signer,
+    uint256 _totalPrice,
+    uint256 _amountToPurchase
+  ) internal {
+    uint256 royaltyAmountCreator;
+    uint256 royaltyAmountOwner;
+    uint256 restSalePrice;
+
+    (
+      royaltyAmountCreator,
+      royaltyAmountOwner,
+      restSalePrice
+    ) = _royaltySplitLicense(_tokenId, _totalPrice);
+
+    address licenseCreator = ILicense(licenseAddress)._getCreator(_tokenId);
+    address owner = IMaster(masterAddress)._getOwner(_tokenId);
+
+    payable(licenseCreator).transfer(royaltyAmountCreator);
+    payable(owner).transfer(royaltyAmountOwner);
+
+    //transfer money to seller
+    payable(_signer).transfer(restSalePrice);
+
+    // Transfer license(s) to buyer
+    ILicense(licenseAddress).transferLicenses(
+      _signer,
+      _buyer,
+      _tokenId,
+      _amountToPurchase
+    );
   }
 
   /**
