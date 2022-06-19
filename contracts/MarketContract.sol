@@ -45,7 +45,6 @@ contract MarketContract is
   address internal masterAddress;
 
   // Events
-  event Withdrawal(address _payee, uint256 _amount);
   event UnlistedNFT(bytes signature);
   event RedeemedMintVoucher(bytes signature, address buyer, uint256 soldAmount);
   event RedeemedSaleVoucher(bytes signature, address buyer, uint256 soldAmount);
@@ -113,7 +112,7 @@ contract MarketContract is
 
     require(_signer != _buyer, "Seller is buyer.");
 
-    uint256 purchasePrice = approvePurchase(
+    (uint256 totalPrice, uint256 serviceFees) = approvePurchase(
       _mintVoucher.price,
       _amountToPurchase
     );
@@ -130,9 +129,10 @@ contract MarketContract is
       tokenId,
       _buyer,
       _signer,
-      purchasePrice,
+      totalPrice,
       _amountToPurchase,
-      _mintVoucher.isMaster
+      _mintVoucher.isMaster,
+      serviceFees
     );
 
     voucherAmountSold[_mintVoucher.signature] = voucherAmountSold[
@@ -165,7 +165,7 @@ contract MarketContract is
 
     require(_signer != _buyer, "Seller is buyer.");
 
-    uint256 purchasePrice = approvePurchase(
+    (uint256 totalPrice, uint256 serviceFees) = approvePurchase(
       _saleVoucher.price,
       _amountToPurchase
     );
@@ -178,9 +178,10 @@ contract MarketContract is
       tokenId,
       _buyer,
       _signer,
-      purchasePrice,
+      totalPrice,
       _amountToPurchase,
-      _saleVoucher.isMaster
+      _saleVoucher.isMaster,
+      serviceFees
     );
 
     voucherAmountSold[_saleVoucher.signature] = voucherAmountSold[
@@ -279,7 +280,7 @@ contract MarketContract is
    */
   function approvePurchase(uint256 _price, uint256 _amountToPurchase)
     internal
-    returns (uint256)
+    returns (uint256, uint256)
   {
     uint256 valueTransmitted = msg.value;
 
@@ -294,7 +295,11 @@ contract MarketContract is
       "Insufficient funds to redeem."
     );
 
-    return totalPriceWithServiceFees;
+    uint256 serviceFees = totalPriceWithServiceFees.sub(
+      _price.mul(_amountToPurchase)
+    );
+
+    return (totalPriceWithServiceFees, serviceFees);
   }
 
   /**
@@ -312,7 +317,8 @@ contract MarketContract is
     address _signer,
     uint256 _purchasePrice,
     uint256 _amountToPurchase,
-    bool _isMaster
+    bool _isMaster,
+    uint256 serviceFees
   ) internal {
     require(_tokenId != 0, "TokenId cannot be 0.");
 
@@ -334,6 +340,9 @@ contract MarketContract is
 
       //transfer money to seller
       payable(_signer).transfer(restSalePrice);
+
+      //transfer service fees
+      payable(admin).transfer(serviceFees);
 
       // Transfer master and license(s) to buyer
       IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
@@ -422,7 +431,6 @@ contract MarketContract is
    */
   function withdrawFees(uint256 _calculatedFees) public payable {
     payable(admin).transfer(_calculatedFees);
-    emit Withdrawal(admin, _calculatedFees);
   }
 
   /**
