@@ -268,26 +268,15 @@ contract MarketContract is
    */
   function approvePurchase(uint256 _price, uint256 _amountToPurchase)
     internal
-    returns (uint256, uint256)
+    returns (uint256)
   {
     uint256 valueTransmitted = msg.value;
-
-    uint256 totalPriceWithServiceFees = calculateTotalPriceWithServiceFees(
-      _price,
-      _amountToPurchase
-    );
+    uint256 totalPrice = _price.mul(_amountToPurchase);
 
     // make sure that the redeemer is paying enough to cover the buyer's cost
-    require(
-      valueTransmitted >= totalPriceWithServiceFees,
-      "Insufficient funds to redeem."
-    );
+    require(valueTransmitted >= totalPrice, "Insufficient funds to redeem.");
 
-    uint256 caculatedServiceFees = totalPriceWithServiceFees.sub(
-      _price.mul(_amountToPurchase)
-    );
-
-    return (totalPriceWithServiceFees, caculatedServiceFees);
+    return totalPrice;
   }
 
   /**
@@ -309,23 +298,26 @@ contract MarketContract is
   ) internal {
     require(_tokenId != 0, "TokenId cannot be 0.");
 
-    (uint256 totalPrice, uint256 calculatedServiceFees) = approvePurchase(
-      _price,
-      _amountToPurchase
-    );
+    uint256 totalPrice = approvePurchase(_price, _amountToPurchase);
 
-    //transfer service fees
-    payable(admin).transfer(calculatedServiceFees);
+    uint256 totalServiceFees = calculateTotalServiceFees(totalPrice);
 
     if (_isMaster == true) {
-      payAndTransferMaster(_tokenId, _buyer, _signer, totalPrice);
+      payAndTransferMaster(
+        _tokenId,
+        _buyer,
+        _signer,
+        totalPrice,
+        totalServiceFees
+      );
     } else {
       payAndTransferLicenses(
         _tokenId,
         _buyer,
         _signer,
         totalPrice,
-        _amountToPurchase
+        _amountToPurchase,
+        totalServiceFees
       );
     }
   }
@@ -334,7 +326,8 @@ contract MarketContract is
     uint256 _tokenId,
     address _buyer,
     address _signer,
-    uint256 _totalPrice
+    uint256 _totalPrice,
+    uint256 _totalServiceFees
   ) internal {
     (uint256 royaltyAmountCreator, uint256 restSalePrice) = _royaltySplitMaster(
       _tokenId,
@@ -345,8 +338,11 @@ contract MarketContract is
 
     payable(masterCreator).transfer(royaltyAmountCreator);
 
+    //transfer service fees
+    payable(admin).transfer(_totalServiceFees);
+
     //transfer money to seller
-    payable(_signer).transfer(restSalePrice);
+    payable(_signer).transfer(restSalePrice.sub(_totalServiceFees));
 
     // Transfer master and license(s) to buyer
     IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
@@ -365,7 +361,8 @@ contract MarketContract is
     address _buyer,
     address _signer,
     uint256 _totalPrice,
-    uint256 _amountToPurchase
+    uint256 _amountToPurchase,
+    uint256 _totalServiceFees
   ) internal {
     (
       uint256 royaltyAmountCreator,
@@ -379,8 +376,11 @@ contract MarketContract is
     payable(licenseCreator).transfer(royaltyAmountCreator);
     payable(owner).transfer(royaltyAmountOwner);
 
+    //transfer service fees
+    payable(admin).transfer(_totalServiceFees);
+
     //transfer money to seller
-    payable(_signer).transfer(restSalePrice);
+    payable(_signer).transfer(restSalePrice.sub(_totalServiceFees));
 
     // Transfer license(s) to buyer
     ILicense(licenseAddress).transferLicenses(
@@ -393,17 +393,16 @@ contract MarketContract is
 
   /**
    * @dev Calculates the services fees
-   * @param _price Price to be paid by the buyer
-   * @param _amount Amount the buyer wishes to purchase
+   * @param _totalPrice Price to be paid by the buyer
    */
-  function calculateTotalPriceWithServiceFees(uint256 _price, uint256 _amount)
+  function calculateTotalServiceFees(uint256 _totalPrice)
     internal
     view
     returns (uint256)
   {
     uint256 serviceFees = getServiceFees();
-    uint256 priceWithServiceFees = _price.mul(serviceFees).div(100000);
-    return _price.mul(_amount).add((priceWithServiceFees.mul(_amount)));
+    uint256 priceWithServiceFees = _totalPrice.mul(serviceFees).div(100000);
+    return (priceWithServiceFees);
   }
 
   /**
