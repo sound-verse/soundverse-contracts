@@ -112,11 +112,6 @@ contract MarketContract is
 
     require(_signer != _buyer, "Seller is buyer.");
 
-    (uint256 totalPrice, uint256 serviceFees) = approvePurchase(
-      _mintVoucher.price,
-      _amountToPurchase
-    );
-
     uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(
       _mintVoucher.tokenUri
     );
@@ -129,10 +124,9 @@ contract MarketContract is
       tokenId,
       _buyer,
       _signer,
-      totalPrice,
+      _mintVoucher.price,
       _amountToPurchase,
-      _mintVoucher.isMaster,
-      serviceFees
+      _mintVoucher.isMaster
     );
 
     voucherAmountSold[_mintVoucher.signature] = voucherAmountSold[
@@ -165,11 +159,6 @@ contract MarketContract is
 
     require(_signer != _buyer, "Seller is buyer.");
 
-    (uint256 totalPrice, uint256 serviceFees) = approvePurchase(
-      _saleVoucher.price,
-      _amountToPurchase
-    );
-
     uint256 tokenId = IMaster(masterAddress).getTokenIdForURI(
       _saleVoucher.tokenUri
     );
@@ -178,10 +167,9 @@ contract MarketContract is
       tokenId,
       _buyer,
       _signer,
-      totalPrice,
+      _saleVoucher.price,
       _amountToPurchase,
-      _saleVoucher.isMaster,
-      serviceFees
+      _saleVoucher.isMaster
     );
 
     voucherAmountSold[_saleVoucher.signature] = voucherAmountSold[
@@ -295,11 +283,11 @@ contract MarketContract is
       "Insufficient funds to redeem."
     );
 
-    uint256 serviceFees = totalPriceWithServiceFees.sub(
+    uint256 caculatedServiceFees = totalPriceWithServiceFees.sub(
       _price.mul(_amountToPurchase)
     );
 
-    return (totalPriceWithServiceFees, serviceFees);
+    return (totalPriceWithServiceFees, caculatedServiceFees);
   }
 
   /**
@@ -307,7 +295,7 @@ contract MarketContract is
    * @param _tokenId TokenId of the NFT
    * @param _buyer The address of the buyer of the NFT
    * @param _signer The address of the account which will sell the NFT upon success
-   * @param _purchasePrice Price to be paid by the buyer
+   * @param _price Price to be paid by the buyer
    * @param _amountToPurchase Amount of items to be purchased
    * @param _isMaster Is a Master nft or is a License
    */
@@ -315,10 +303,9 @@ contract MarketContract is
     uint256 _tokenId,
     address _buyer,
     address _signer,
-    uint256 _purchasePrice,
+    uint256 _price,
     uint256 _amountToPurchase,
-    bool _isMaster,
-    uint256 serviceFees
+    bool _isMaster
   ) internal {
     require(_tokenId != 0, "TokenId cannot be 0.");
 
@@ -328,10 +315,15 @@ contract MarketContract is
     uint256 royaltyAmountOwner;
     uint256 restSalePrice;
 
+    (uint256 totalPrice, uint256 caculatedServiceFees) = approvePurchase(
+      _price,
+      _amountToPurchase
+    );
+
     if (_isMaster == true) {
       (royaltyAmountCreator, restSalePrice) = _royaltySplitMaster(
         _tokenId,
-        _purchasePrice
+        totalPrice
       );
 
       address creator = IMaster(masterAddress)._getCreator(_tokenId);
@@ -342,7 +334,7 @@ contract MarketContract is
       payable(_signer).transfer(restSalePrice);
 
       //transfer service fees
-      payable(admin).transfer(serviceFees);
+      payable(admin).transfer(caculatedServiceFees);
 
       // Transfer master and license(s) to buyer
       IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
@@ -361,7 +353,7 @@ contract MarketContract is
         royaltyAmountCreator,
         royaltyAmountOwner,
         restSalePrice
-      ) = _royaltySplitLicense(_tokenId, _purchasePrice);
+      ) = _royaltySplitLicense(_tokenId, totalPrice);
 
       address creator = ILicense(licenseAddress)._getCreator(_tokenId);
       address owner = IMaster(masterAddress)._getOwner(_tokenId);
