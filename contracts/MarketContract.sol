@@ -314,8 +314,11 @@ contract MarketContract is
       _amountToPurchase
     );
 
+    //transfer service fees
+    payable(admin).transfer(calculatedServiceFees);
+
     if (_isMaster == true) {
-      payAndTransferMaster(_tokenId, _buyer, _signer, totalPrice, calculatedServiceFees);
+      payAndTransferMaster(_tokenId, _buyer, _signer, totalPrice);
     } else {
       payAndTransferLicenses(
         _tokenId,
@@ -331,8 +334,7 @@ contract MarketContract is
     uint256 _tokenId,
     address _buyer,
     address _signer,
-    uint256 _totalPrice,
-    uint256 _calculatedServiceFees
+    uint256 _totalPrice
   ) internal {
     uint256 licensesAmountFromSigner;
     uint256 royaltyAmountCreator;
@@ -349,9 +351,6 @@ contract MarketContract is
 
     //transfer money to seller
     payable(_signer).transfer(restSalePrice);
-
-    //transfer service fees
-    payable(admin).transfer(_calculatedServiceFees);
 
     // Transfer master and license(s) to buyer
     IMaster(masterAddress).transferMaster(_signer, _buyer, _tokenId);
