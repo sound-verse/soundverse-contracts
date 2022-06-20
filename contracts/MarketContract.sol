@@ -80,7 +80,7 @@ contract MarketContract is
     EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION)
   {
     admin = payable(owner());
-    _serviceFees = 3000;
+    _serviceFees = 3500;
     commonUtils = ICommonUtils(_commonUtilsAddress);
   }
 
