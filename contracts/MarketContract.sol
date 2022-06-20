@@ -426,11 +426,34 @@ contract MarketContract is
 
   /**
    * @dev Unlists an NFT
-   * @param signature Voucher signature
+   * @param _mintVoucher Voucher
    */
-  function unlistItem(bytes memory signature) public {
-    isVoucherInvalid[signature] = true;
-    emit UnlistedNFT(signature);
+  function unlistMintVoucher(MintVoucher calldata _mintVoucher) public {
+    address _signer = _getMintVoucherSigner(_mintVoucher);
+    address _caller = msg.sender;
+    require(
+      (_signer == _caller) || (_signer == admin),
+      "Only owner can unlist."
+    );
+
+    isVoucherInvalid[_mintVoucher.signature] = true;
+    emit UnlistedNFT(_mintVoucher.signature);
+  }
+
+  /**
+   * @dev Unlists an NFT
+   * @param _saleVoucher Voucher
+   */
+  function unlistSaleVoucher(SaleVoucher calldata _saleVoucher) public {
+    address _signer = _getSaleVoucherSigner(_saleVoucher);
+    address _caller = msg.sender;
+    require(
+      (_signer == _caller) || (_signer == admin),
+      "Only owner can unlist."
+    );
+
+    isVoucherInvalid[_saleVoucher.signature] = true;
+    emit UnlistedNFT(_saleVoucher.signature);
   }
 
   /**
