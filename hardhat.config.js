@@ -61,17 +61,28 @@ module.exports = {
       // url: "https://rpc-mumbai.maticvigil.com/v1/14f307d73c91cd84b80ce7c71643bfde9b9c92ea",
       accounts: [process.env.PRIVATE_KEY1]
     },
+    polygon: {
+      chainId: 137,
+      url: process.env.POLYGON_URL_MAINNET || "",
+      accounts: [process.env.SOUNDVERSE_PRIVATE_KEY]
+    },
     fuji: {
       chainId: 43113,
       gasPrice: "auto",
       url: process.env.FUJI_URL || "",
       accounts: [process.env.PRIVATE_KEY1]
     },
-    rinkeby: {
-      chainId: 4,
+    goerli: {
+      chainId: 5,
       gasPrice: "auto",
-      url: "https://rinkeby.infura.io/v3/18ba14d06a5b4798ac4bda603571cc17",
+      url: "https://goerli.infura.io/v3/18ba14d06a5b4798ac4bda603571cc17",
       accounts: [process.env.PRIVATE_KEY1]
+    },
+    ethereum: {
+      chainId: 1,
+      gasPrice: "auto",
+      url: "https://mainnet.infura.io/v3/18ba14d06a5b4798ac4bda603571cc17",
+      accounts: [process.env.PRIVATE_KEY_ETH]
     }
   },
   paths: {
