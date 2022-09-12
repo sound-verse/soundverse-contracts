@@ -29,6 +29,18 @@ async function main() {
   await marketContract.deployed();
   await utils.setContractAddressFor("MarketContract", marketContract.address);
   console.log("NFT Market contract deployed to:", marketContract.address);
+
+  // const deploymentDataMarket = marketContract.interface.encodeDeploy([commonUtilsAddress]);
+  // const estimatedGasMarket = await ethers.provider.estimateGas({ data: deploymentDataMarket });
+  // console.log("Estimated gas for Market Contract", estimatedGasMarket.toNumber());
+
+  // const deploymentDataMaster = master.interface.encodeDeploy([commonUtilsAddress]);
+  // const estimatedGasMaster = await ethers.provider.estimateGas({ data: deploymentDataMaster });
+  // console.log("Estimated gas for Master Contract", estimatedGasMaster.toNumber());
+
+  // const deploymentDataLicense = license.interface.encodeDeploy([commonUtilsAddress]);
+  // const estimatedGasLicense = await ethers.provider.estimateGas({ data: deploymentDataLicense });
+  // console.log("Estimated gas for License Contract", estimatedGasLicense.toNumber());
 }
 
 main()
