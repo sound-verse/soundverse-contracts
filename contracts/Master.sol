@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "hardhat/console.sol";
 
 contract Master is
   AccessControlEnumerable,
@@ -120,10 +119,8 @@ contract Master is
     string memory tokenURI,
     uint256 _licensesAmount
   ) public onlyMarketplace returns (uint256) {
-    console.log("CREATE MASTER ITEM starting....");
     require(bytes(tokenURI).length > 0, "TokenUri can not be null");
     require(_licensesAmount >= MIN_SUPPLY, "Supply must be greater than 2");
-    console.log("MINTITEM about to be called....");
 
     uint256 tokenId = mintItem(_signer, tokenURI, _licensesAmount);
 
@@ -141,7 +138,6 @@ contract Master is
     string memory _mintURI,
     uint256 _amountToMint
   ) private returns (uint256) {
-    console.log("MINTITEM STARTING....");
     _tokenIdTracker.increment();
     uint256 currentTokenId = _tokenIdTracker.current();
 
@@ -152,12 +148,10 @@ contract Master is
     _setTokenURI(currentTokenId, _mintURI);
     setTokenIDForURI(currentTokenId, _mintURI);
 
-    console.log("setRoyaltyFees about to be called....");
     emit MasterMintEvent(currentTokenId, _mintURI);
 
     initializeContracts();
 
-    console.log("MINTLICENSES about to be called....");
     licensesContract.mintLicenses(
       _signer,
       _mintURI,
